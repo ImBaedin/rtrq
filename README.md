@@ -28,6 +28,28 @@ This approach combines the best of both worlds:
 - Reduced bandwidth usage through smart cache invalidation
 - Enhanced data privacy by not broadcasting data changes
 
+## When to Use RTRQ
+
+RTRQ is an excellent choice when:
+
+- **You have larger, less frequent data changes**: Perfect for content management systems, collaborative tools, or dashboard applications where updates happen periodically rather than continuously.
+- **You need something easy to set up**: RTRQ integrates seamlessly with existing React Query setups and doesn't require complex websocket infrastructure.
+- **"Pseudo-realtime" is acceptable**: Your application can tolerate small delays (typically < 1 second) in data synchronization.
+- **You want to optimize bandwidth**: Your application benefits from not sending full data payloads for every change.
+- **You have multiple users viewing shared data**: Collaborative features where multiple users view the same data but don't need millisecond-precision updates.
+- **You prefer a familiar REST/HTTP architecture**: Your team is more comfortable with traditional HTTP patterns than websocket-based architectures.
+
+## When Not to Use RTRQ
+
+RTRQ might not be the best choice when:
+
+- **You have smaller, more frequent data changes**: Applications like real-time chat, live trading platforms, or gaming where updates occur multiple times per second.
+- **You require actual real-time data**: Use cases where millisecond accuracy is crucial, such as financial trading or real-time analytics.
+- **You need to listen for specific events**: Scenarios requiring event-driven architecture with specific event types and handlers.
+- **You need guaranteed message delivery**: Cases where every single update must be delivered in order and without fail.
+- **You have high-frequency bidirectional communication**: Applications requiring constant back-and-forth between client and server.
+- **You need offline-first capabilities**: Applications that must function fully offline with complex state reconciliation.
+
 ## What's inside?
 
 This Turborepo includes the following packages/apps:
