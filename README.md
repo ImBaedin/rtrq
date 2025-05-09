@@ -2,6 +2,32 @@
 
 A monorepo containing the RTRQ system components.
 
+## Project Overview
+
+RTRQ bridges the gap between fully real-time applications and purely request-based applications. It leverages modern request caching and invalidation patterns to create a seamless real-time experience without the complexity of traditional real-time systems.
+
+### Key Features
+
+- **Global Query Invalidation**: By externalizing query keys into a global database, RTRQ enables cross-client query invalidation
+- **Smart Real-time Updates**: When multiple users share the same query key and it's enabled as "realtime", updates are synchronized across all clients
+- **Efficient Data Transfer**: Uses cache invalidation instead of data transfer over websockets, reducing bandwidth usage and ensuring data privacy
+- **Server SDK**: Provides tools for backend-driven query invalidation after data changes
+
+### How It Works
+
+Consider a scenario where two users are viewing the same todo list:
+1. User A adds a new item
+2. During the API request, the associated query key is invalidated
+3. Both User A (who knows about the pending update) and User B (who is unaware of the change) receive the invalidation
+4. React Query automatically refetches the data for both users
+5. The update is synchronized without sending the actual data over websockets
+
+This approach combines the best of both worlds:
+- The simplicity and reliability of request-based applications
+- The real-time feel of websocket-based systems
+- Reduced bandwidth usage through smart cache invalidation
+- Enhanced data privacy by not broadcasting data changes
+
 ## What's inside?
 
 This Turborepo includes the following packages/apps:
