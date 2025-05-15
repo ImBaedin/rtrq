@@ -1,0 +1,7 @@
+{
+	"extends": "@rtrq/typescript-config/base.json",
+	"include": [
+		"src",
+		"*.ts"
+	]
+}

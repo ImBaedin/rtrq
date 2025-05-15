@@ -8,5 +8,8 @@
 	},
 	"keywords": [],
 	"author": "",
-	"license": "ISC"
+	"license": "ISC",
+	"dependencies": {
+		"uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.52.0"
+	}
 }

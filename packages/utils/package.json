@@ -1,0 +1,25 @@
+{
+	"name": "@rtrq/utils",
+	"version": "0.0.1",
+	"description": "Utility functions for RTRQ",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"scripts": {
+		"clean": "rm -rf .turbo node_modules",
+		"lint": "eslint .",
+		"lint:fix": "pnpm lint --fix",
+		"type-check": "tsc --noEmit"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"devDependencies": {
+		"@rtrq/typescript-config": "workspace:*",
+		"@types/semver": "^7.7.0",
+		"typescript": "^5.8.2"
+	},
+	"dependencies": {
+		"semver": "^7.7.2",
+		"valibot": "^1.1.0"
+	}
+}

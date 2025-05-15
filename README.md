@@ -16,6 +16,7 @@ RTRQ bridges the gap between fully real-time applications and purely request-bas
 ### How It Works
 
 Consider a scenario where two users are viewing the same todo list:
+
 1. User A adds a new item
 2. During the API request, the associated query key is invalidated
 3. Both User A (who knows about the pending update) and User B (who is unaware of the change) receive the invalidation
@@ -23,6 +24,7 @@ Consider a scenario where two users are viewing the same todo list:
 5. The update is synchronized without sending the actual data over websockets
 
 This approach combines the best of both worlds:
+
 - The simplicity and reliability of request-based applications
 - The real-time feel of websocket-based systems
 - Reduced bandwidth usage through smart cache invalidation
@@ -59,8 +61,8 @@ This Turborepo includes the following packages/apps:
 - `apps/manager`: The management interface for RTRQ
 - `packages/server`: The core server implementation
 - `packages/adapters`: Adapters for different data sources and sinks
-  - `adapters/trpc`: tRPC adapter for RTRQ
-  - `adapters/react-query`: React Query adapter for RTRQ
+    - `adapters/trpc`: tRPC adapter for RTRQ
+    - `adapters/react-query`: React Query adapter for RTRQ
 - `packages/core`: Core functionality and shared utilities
 - `packages/eslint-config`: `eslint` configurations
 - `packages/typescript-config`: `tsconfig.json`s used throughout the monorepo
