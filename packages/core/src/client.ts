@@ -17,10 +17,6 @@ type EventHandler<T extends ClientEventTypes> = (
 	payload: Extract<ClientPacket, { type: T }>["payload"],
 ) => void;
 
-interface Subscription {
-	unsubscribe: () => void;
-}
-
 /**
  * RTRQ websocket client
  *
@@ -84,7 +80,7 @@ export class WebSocketClient {
 	subscribe<T extends ClientEventTypes>(
 		eventType: T,
 		handler: EventHandler<T>,
-	): Subscription {
+	) {
 		if (!this.eventHandlers.has(eventType)) {
 			this.eventHandlers.set(eventType, new Set());
 		}
