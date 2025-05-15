@@ -1,4 +1,6 @@
-import { ClientPacket, validateClientPacket } from "@rtrq/utils";
+import { ClientPacket, validateClientPacket, versionCheck } from "@rtrq/utils";
+
+import { VERSION } from "./utils/version";
 
 const DEFAULT_URL = "ws://rtrq.io/ws";
 
@@ -99,16 +101,25 @@ export class WebSocketClient {
 	}
 
 	private handleEvent(message: any) {
+		let packet: ClientPacket;
+
 		try {
-			const packet = validateClientPacket(message);
-
-			const handlers = this.eventHandlers.get(packet.type);
-
-			if (handlers) {
-				handlers.forEach((handler) => handler(packet.payload));
-			}
+			packet = validateClientPacket(message);
 		} catch (error) {
 			console.error("Failed to parse event message:", error);
+			return;
+		}
+
+		const handlers = this.eventHandlers.get(packet.type);
+
+		if (handlers) {
+			handlers.forEach((handler) => handler(packet.payload));
+		}
+
+		if (!versionCheck(packet, VERSION)) {
+			throw new Error(
+				`Invalid packet version: ${packet.version}. Client version: ${VERSION}.`,
+			);
 		}
 	}
 
