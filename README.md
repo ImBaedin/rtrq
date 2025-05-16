@@ -58,14 +58,18 @@ This Turborepo includes the following packages/apps:
 
 ### Apps and Packages
 
-- `apps/manager`: The management interface for RTRQ
-- `packages/server`: The core server implementation
+- `apps/rtrq-self-hosted`: Batteries included server that you can self host wherever you want
+- ✨`packages/manager`: Serverside manager. This handles broadcasting invalidation events
+- ✨`packages/server`: The RTRQ server package. Use this to trigger invalidations after CRUD operations
 - `packages/adapters`: Adapters for different data sources and sinks
-    - `adapters/trpc`: tRPC adapter for RTRQ
-    - `adapters/react-query`: React Query adapter for RTRQ
-- `packages/core`: Core functionality and shared utilities
+    - ✨`adapters/trpc`: tRPC adapter for RTRQ
+    - ✨`adapters/react-query`: React Query adapter for RTRQ
+- `packages/core`: Core functionality
 - `packages/eslint-config`: `eslint` configurations
 - `packages/typescript-config`: `tsconfig.json`s used throughout the monorepo
+- `packages/utils`: Shared lib functionality
+
+> Packages that are published on npm are denoted with a ✨
 
 Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
 

@@ -2,7 +2,7 @@ import { ClientPacket, validateClientPacket, versionCheck } from "@rtrq/utils";
 
 import { VERSION } from "./utils/version";
 
-const DEFAULT_URL = "ws://rtrq.io/ws";
+const DEFAULT_URL = "ws://connect.rtrq.io";
 
 interface ClientConfig {
 	url?: string;
@@ -129,12 +129,4 @@ export class WebSocketClient {
 			this.ws = null;
 		}
 	}
-}
-
-function test() {
-	const t = new WebSocketClient({});
-
-	t.subscribe("invalidation", (payload) => {
-		console.log(payload);
-	});
 }
