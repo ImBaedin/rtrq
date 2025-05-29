@@ -1,10 +1,15 @@
-import { ClientPacket, validateClientPacket, versionCheck } from "@rtrq/utils";
+import {
+	ClientPacket,
+	ServerPacket,
+	validateClientPacket,
+	versionCheck,
+} from "@rtrq/utils";
 
 import { VERSION } from "./utils/version";
 
 const DEFAULT_URL = "ws://connect.rtrq.io";
 
-interface ClientConfig {
+export interface ClientConfig {
 	url?: string;
 	options?: {
 		reconnect?: boolean;
@@ -128,5 +133,30 @@ export class WebSocketClient {
 			this.ws.close();
 			this.ws = null;
 		}
+	}
+
+	/**
+	 * Send a packet to the server
+	 * @param type - The type of packet to send
+	 * @param payload - The payload to send
+	 * @throws Error if the connection is not open
+	 */
+	send<T extends ServerPacket["type"]>(
+		type: T,
+		payload: Extract<ServerPacket, { type: T }>["payload"],
+	): void {
+		if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+			throw new Error("WebSocket connection is not open");
+		}
+
+		const packet: ServerPacket = {
+			type,
+			version: VERSION,
+			timestamp: new Date(),
+			source: "rtrq-client",
+			payload,
+		};
+
+		this.ws.send(JSON.stringify(packet));
 	}
 }

@@ -1,5 +1,7 @@
 import * as v from "valibot";
 
+const keySchema = v.pipe(v.array(v.unknown()), v.readonly());
+
 // Extensible base rtrq packet schema
 const basePacketSchema = v.object({
 	type: v.string(),
@@ -22,7 +24,7 @@ const invalidationPacketSchema = v.object({
 	source: v.literal("rtrq-server"),
 
 	payload: v.object({
-		key: v.array(v.any()),
+		key: keySchema,
 		invalidationRecievedAt: v.date(),
 	}),
 });
@@ -40,7 +42,18 @@ const subscriptionPacketSchema = v.object({
 	source: v.literal("rtrq-client"),
 
 	payload: v.object({
-		key: v.array(v.any()),
+		key: keySchema,
+	}),
+});
+
+const unsubscriptionPacketSchema = v.object({
+	...basePacketSchema.entries,
+
+	type: v.literal("unsubscription"),
+	source: v.literal("rtrq-client"),
+
+	payload: v.object({
+		key: keySchema,
 	}),
 });
 
@@ -48,7 +61,10 @@ const subscriptionPacketSchema = v.object({
 const clientPacketValidator = v.variant("type", [invalidationPacketSchema]);
 
 // Validator for packets recieved on server
-const serverPacketValidator = v.variant("type", [subscriptionPacketSchema]);
+const serverPacketValidator = v.variant("type", [
+	subscriptionPacketSchema,
+	unsubscriptionPacketSchema,
+]);
 
 export type Packet = v.InferOutput<typeof basePacketSchema>;
 export type ClientPacket = v.InferOutput<typeof clientPacketValidator>;

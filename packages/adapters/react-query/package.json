@@ -2,11 +2,40 @@
 	"name": "@rtrq/react-query",
 	"version": "1.0.0",
 	"description": "RTRQ React Query SDK",
-	"main": "index.js",
+	"main": "dist/index.js",
+	"module": "dist/index.esm.js",
+	"types": "dist/index.d.ts",
+	"files": [
+		"dist"
+	],
 	"scripts": {
-		"test": "echo \"Error: no test specified\" && exit 1"
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"test": "jest",
+		"lint": "eslint src --ext .ts,.tsx"
 	},
-	"keywords": [],
+	"dependencies": {
+		"@rtrq/core": "workspace:*"
+	},
+	"peerDependencies": {
+		"react": ">=16.8.0",
+		"react-dom": ">=16.8.0",
+		"@tanstack/react-query": ">=4.0.0"
+	},
+	"devDependencies": {
+		"@types/react": "^18.2.0",
+		"@types/react-dom": "^18.2.0",
+		"typescript": "^5.0.0",
+		"tsup": "^8.0.0",
+		"eslint": "^8.0.0",
+		"@typescript-eslint/eslint-plugin": "^6.0.0",
+		"@typescript-eslint/parser": "^6.0.0"
+	},
+	"keywords": [
+		"react",
+		"react-query",
+		"rtrq"
+	],
 	"author": "",
 	"license": "ISC"
 }
