@@ -8,4 +8,6 @@ export default defineConfig({
 	sourcemap: true,
 	clean: true,
 	external: ["react", "react-dom", "@tanstack/react-query"],
+	noExternal: ["@rtrq/core"],
+	minify: true,
 });
