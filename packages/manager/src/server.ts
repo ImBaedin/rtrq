@@ -1,5 +1,5 @@
 import { EventEmitter } from "events";
-import { App, AppOptions, TemplatedApp } from "uWebSockets.js";
+import { App, AppOptions, TemplatedApp, WebSocket } from "uWebSockets.js";
 import * as v from "valibot";
 
 import {
@@ -50,17 +50,31 @@ const invalidationRequestSchema = v.object({
 
 export interface RTRQServerOptions {
 	appOptions?: AppOptions;
+	/**
+	 * List of IP addresses allowed to access the invalidation endpoint
+	 * If not provided, no IP restrictions are applied
+	 */
+	allowedIps?: string[];
+	/**
+	 * Maximum size of the request body in bytes
+	 * Defaults to 1MB
+	 */
+	maxBodySize?: number;
 }
 
 export class RTRQServer extends EventEmitter {
 	private app: TemplatedApp;
-	private subscriptions: Map<string, Set<any>> = new Map();
-	private clientIds: Map<any, string> = new Map();
+	private subscriptions: Map<string, Set<WebSocket<unknown>>> = new Map();
+	private clientIds: Map<WebSocket<unknown>, string> = new Map();
 	private nextClientId = 1;
+	private readonly allowedIps: Set<string>;
+	private readonly maxBodySize: number;
 
 	constructor(options?: RTRQServerOptions) {
 		super();
 		this.app = App(options?.appOptions);
+		this.allowedIps = new Set(options?.allowedIps || []);
+		this.maxBodySize = options?.maxBodySize || 1024 * 1024; // Default 1MB
 
 		this.app.ws("/", {
 			open: (ws) => {
@@ -170,10 +184,46 @@ export class RTRQServer extends EventEmitter {
 
 		// Setup invalidation endpoint
 		this.app.post("/invalidate", async (res, req) => {
-			// Read the request body
+			// Check IP allow-list if configured
+			if (this.allowedIps.size > 0) {
+				const clientIp = req.getHeader("x-forwarded-for");
+				if (!clientIp || !this.allowedIps.has(clientIp)) {
+					res.writeStatus("403 Forbidden");
+					res.writeHeader("Content-Type", "application/json");
+					res.end(
+						JSON.stringify({
+							error: "Access denied",
+							message:
+								"Your IP is not allowed to access this endpoint",
+						}),
+					);
+					return;
+				}
+			}
+
+			// Track body size
+			let bodySize = 0;
 			let body = "";
+
+			// Handle data chunks
 			res.onData((chunk, isLast) => {
+				bodySize += chunk.byteLength;
+
+				// Check if body size exceeds limit
+				if (bodySize > this.maxBodySize) {
+					res.writeStatus("413 Payload Too Large");
+					res.writeHeader("Content-Type", "application/json");
+					res.end(
+						JSON.stringify({
+							error: "Request too large",
+							message: `Request body exceeds maximum size of ${this.maxBodySize} bytes`,
+						}),
+					);
+					return;
+				}
+
 				body += Buffer.from(chunk).toString();
+
 				if (isLast) {
 					try {
 						// Parse and validate the request body
@@ -185,6 +235,7 @@ export class RTRQServer extends EventEmitter {
 
 						if (!result.success) {
 							res.writeStatus("400 Bad Request");
+							res.writeHeader("Content-Type", "application/json");
 							res.end(
 								JSON.stringify({
 									error: "Invalid request body",
@@ -199,6 +250,7 @@ export class RTRQServer extends EventEmitter {
 
 						// Send success response
 						res.writeStatus("200 OK");
+						res.writeHeader("Content-Type", "application/json");
 						res.end(
 							JSON.stringify({
 								message: "Key invalidated successfully",
@@ -210,6 +262,7 @@ export class RTRQServer extends EventEmitter {
 							error,
 						);
 						res.writeStatus("500 Internal Server Error");
+						res.writeHeader("Content-Type", "application/json");
 						res.end(
 							JSON.stringify({
 								error: "Failed to process invalidation request",
@@ -273,6 +326,37 @@ export class RTRQServer extends EventEmitter {
 	}
 
 	/**
+	 * Remove a dead client from all subscriptions and client tracking
+	 */
+	private removeDeadClient(client: WebSocket<unknown>) {
+		const clientId = this.clientIds.get(client) || "unknown";
+		const removedSubscriptions: unknown[] = [];
+
+		// Remove client from all subscriptions
+		for (const [key, clients] of this.subscriptions.entries()) {
+			if (clients.has(client)) {
+				clients.delete(client);
+				if (clients.size === 0) {
+					this.subscriptions.delete(key);
+				}
+				removedSubscriptions.push(JSON.parse(key));
+			}
+		}
+
+		// Remove client from tracking
+		this.clientIds.delete(client);
+
+		// Emit disconnect event
+		this.emit("client:disconnect", {
+			clientId,
+			code: 1006, // Abnormal Closure
+			message: "Connection lost",
+			remainingConnections: this.clientIds.size,
+			removedSubscriptions,
+		});
+	}
+
+	/**
 	 * Invalidate a query and notify all subscribed clients
 	 * Clients will be notified if their subscription key matches the invalidation key
 	 * either exactly or as a prefix
@@ -305,9 +389,20 @@ export class RTRQServer extends EventEmitter {
 			const keyStr = JSON.stringify(matchedKey);
 			const clients = this.subscriptions.get(keyStr);
 			if (clients) {
-				clients.forEach((client) => {
-					client.send(JSON.stringify(invalidationPacket));
-					notifiedClients++;
+				// Create a copy of the clients set to avoid modification during iteration
+				const clientsCopy = new Set(clients);
+				clientsCopy.forEach((client) => {
+					try {
+						client.send(JSON.stringify(invalidationPacket));
+						notifiedClients++;
+					} catch (error) {
+						console.error(
+							"Failed to send invalidation to client:",
+							error,
+						);
+						// Remove the dead client
+						this.removeDeadClient(client);
+					}
 				});
 			}
 		}
