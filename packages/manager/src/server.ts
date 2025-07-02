@@ -1,5 +1,11 @@
 import { EventEmitter } from "events";
-import { App, AppOptions, TemplatedApp, WebSocket } from "uWebSockets.js";
+import {
+	App,
+	AppOptions,
+	HttpRequest,
+	TemplatedApp,
+	WebSocket,
+} from "uWebSockets.js";
 import * as v from "valibot";
 
 import {
@@ -15,12 +21,14 @@ export type QuerySubscriptionEvent = {
 	key: unknown[];
 	clientId: string;
 	totalSubscribers: number;
+	request?: HttpRequest;
 };
 
 export type QueryUnsubscriptionEvent = {
 	key: unknown[];
 	clientId: string;
 	remainingSubscribers: number;
+	request?: HttpRequest;
 };
 
 export type QueryInvalidationEvent = {
@@ -28,11 +36,21 @@ export type QueryInvalidationEvent = {
 	matchedKeys: unknown[][];
 	notifiedClients: number;
 	totalSubscriptions: number;
+	request?: HttpRequest;
+};
+
+export type QueryBeforeInvalidationEvent = {
+	key: unknown[];
+	matchedKeys: unknown[][];
+	totalSubscriptions: number;
+	preventDefault: () => void;
+	request?: HttpRequest;
 };
 
 export type ClientConnectionEvent = {
 	clientId: string;
 	totalConnections: number;
+	request?: HttpRequest;
 };
 
 export type ClientDisconnectionEvent = {
@@ -41,6 +59,7 @@ export type ClientDisconnectionEvent = {
 	message: string;
 	remainingConnections: number;
 	removedSubscriptions: unknown[];
+	request?: HttpRequest;
 };
 
 // Schema for the invalidation request body
@@ -66,6 +85,7 @@ export class RTRQServer extends EventEmitter {
 	private app: TemplatedApp;
 	private subscriptions: Map<string, Set<WebSocket<unknown>>> = new Map();
 	private clientIds: Map<WebSocket<unknown>, string> = new Map();
+	private clientRequests: Map<WebSocket<unknown>, HttpRequest> = new Map();
 	private nextClientId = 1;
 	private readonly allowedIps: Set<string>;
 	private readonly maxBodySize: number;
@@ -77,13 +97,22 @@ export class RTRQServer extends EventEmitter {
 		this.maxBodySize = options?.maxBodySize || 1024 * 1024; // Default 1MB
 
 		this.app.ws("/", {
+			upgrade: (res, req, context) => {
+				// Store the request for later use
+				(context as any).request = req;
+			},
 			open: (ws) => {
 				const clientId = `client-${this.nextClientId++}`;
 				this.clientIds.set(ws, clientId);
 
+				// Get the request from the context
+				const request = (ws as any).context?.request;
+				this.clientRequests.set(ws, request);
+
 				this.emit("client:connect", {
 					clientId,
 					totalConnections: this.clientIds.size,
+					request,
 				});
 			},
 			message: (ws, message) => {
@@ -120,6 +149,7 @@ export class RTRQServer extends EventEmitter {
 								clientId: this.clientIds.get(ws) || "unknown",
 								totalSubscribers:
 									this.subscriptions.get(key)?.size || 0,
+								request: this.clientRequests.get(ws),
 							});
 							break;
 						}
@@ -139,6 +169,7 @@ export class RTRQServer extends EventEmitter {
 								key: validatedPacket.payload.key,
 								clientId: this.clientIds.get(ws) || "unknown",
 								remainingSubscribers,
+								request: this.clientRequests.get(ws),
 							});
 							break;
 						}
@@ -170,7 +201,9 @@ export class RTRQServer extends EventEmitter {
 					}
 				}
 
+				const request = this.clientRequests.get(ws);
 				this.clientIds.delete(ws);
+				this.clientRequests.delete(ws);
 
 				this.emit("client:disconnect", {
 					clientId,
@@ -178,6 +211,7 @@ export class RTRQServer extends EventEmitter {
 					message,
 					remainingConnections: this.clientIds.size,
 					removedSubscriptions,
+					request,
 				});
 			},
 		});
@@ -246,7 +280,7 @@ export class RTRQServer extends EventEmitter {
 						}
 
 						// Invalidate the key
-						this.invalidateQuery(result.output.key);
+						this.invalidateQuery(result.output.key, req);
 
 						// Send success response
 						res.writeStatus("200 OK");
@@ -308,6 +342,17 @@ export class RTRQServer extends EventEmitter {
 	}
 
 	/**
+	 * Subscribe to query before-invalidation events
+	 * The callback can call preventDefault() to stop the invalidation from proceeding
+	 */
+	public onBeforeInvalidate(
+		callback: (event: QueryBeforeInvalidationEvent) => void,
+	) {
+		this.on("query:before-invalidate", callback);
+		return this;
+	}
+
+	/**
 	 * Subscribe to client connection events
 	 */
 	public onClientConnect(callback: (event: ClientConnectionEvent) => void) {
@@ -330,6 +375,7 @@ export class RTRQServer extends EventEmitter {
 	 */
 	private removeDeadClient(client: WebSocket<unknown>) {
 		const clientId = this.clientIds.get(client) || "unknown";
+		const request = this.clientRequests.get(client);
 		const removedSubscriptions: unknown[] = [];
 
 		// Remove client from all subscriptions
@@ -345,6 +391,7 @@ export class RTRQServer extends EventEmitter {
 
 		// Remove client from tracking
 		this.clientIds.delete(client);
+		this.clientRequests.delete(client);
 
 		// Emit disconnect event
 		this.emit("client:disconnect", {
@@ -353,6 +400,7 @@ export class RTRQServer extends EventEmitter {
 			message: "Connection lost",
 			remainingConnections: this.clientIds.size,
 			removedSubscriptions,
+			request,
 		});
 	}
 
@@ -361,7 +409,35 @@ export class RTRQServer extends EventEmitter {
 	 * Clients will be notified if their subscription key matches the invalidation key
 	 * either exactly or as a prefix
 	 */
-	public invalidateQuery(key: unknown[]) {
+	public invalidateQuery(key: unknown[], request?: HttpRequest) {
+		// First, find all matching keys
+		const matchedKeys: unknown[][] = [];
+		for (const [subKey] of this.subscriptions.entries()) {
+			const subscriptionKey = JSON.parse(subKey);
+			if (isKeyMatch(subscriptionKey, key)) {
+				matchedKeys.push(subscriptionKey);
+			}
+		}
+
+		// Emit before-invalidation event
+		let shouldPrevent = false;
+		const preventDefault = () => {
+			shouldPrevent = true;
+		};
+
+		this.emit("query:before-invalidate", {
+			key,
+			matchedKeys,
+			totalSubscriptions: this.subscriptions.size,
+			preventDefault,
+			request,
+		});
+
+		// Check if invalidation was prevented
+		if (shouldPrevent) {
+			return;
+		}
+
 		const invalidationPacket: ClientPacket = {
 			type: "invalidation",
 			version: VERSION,
@@ -373,16 +449,7 @@ export class RTRQServer extends EventEmitter {
 			},
 		};
 
-		const matchedKeys: unknown[][] = [];
 		let notifiedClients = 0;
-
-		// First, find all matching keys
-		for (const [subKey] of this.subscriptions.entries()) {
-			const subscriptionKey = JSON.parse(subKey);
-			if (isKeyMatch(subscriptionKey, key)) {
-				matchedKeys.push(subscriptionKey);
-			}
-		}
 
 		// Then notify all clients subscribed to matching keys
 		for (const matchedKey of matchedKeys) {
@@ -412,6 +479,7 @@ export class RTRQServer extends EventEmitter {
 			matchedKeys,
 			notifiedClients,
 			totalSubscriptions: this.subscriptions.size,
+			request,
 		});
 	}
 
