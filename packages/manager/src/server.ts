@@ -60,6 +60,16 @@ export interface RTRQServerOptions {
 	 * Defaults to 1MB
 	 */
 	maxBodySize?: number;
+	/**
+	 * Secret key required for invalidation requests
+	 * If not provided, no authentication is required
+	 */
+	secretKey?: string;
+	/**
+	 * CORS origin to allow for WebSocket connections
+	 * If not provided, all origins are allowed
+	 */
+	corsOrigin?: string;
 }
 
 export class RTRQServer extends EventEmitter {
@@ -69,14 +79,39 @@ export class RTRQServer extends EventEmitter {
 	private nextClientId = 1;
 	private readonly allowedIps: Set<string>;
 	private readonly maxBodySize: number;
+	private readonly secretKey?: string;
+	private readonly corsOrigin?: string;
 
 	constructor(options?: RTRQServerOptions) {
 		super();
 		this.app = App(options?.appOptions);
 		this.allowedIps = new Set(options?.allowedIps || []);
 		this.maxBodySize = options?.maxBodySize || 1024 * 1024; // Default 1MB
+		this.secretKey = options?.secretKey;
+		this.corsOrigin = options?.corsOrigin;
 
 		this.app.ws("/", {
+			upgrade: (res, req, context) => {
+				// Check CORS origin if configured
+				if (this.corsOrigin) {
+					const origin = req.getHeader("origin");
+					if (origin !== this.corsOrigin) {
+						res.writeStatus("403 Forbidden");
+						res.writeHeader("Content-Type", "application/json");
+						res.end(JSON.stringify({ error: "Origin not allowed" }));
+						return;
+					}
+				}
+				
+				// Proceed with WebSocket upgrade
+				res.upgrade(
+					{},
+					req.getHeader("sec-websocket-key"),
+					req.getHeader("sec-websocket-protocol"),
+					req.getHeader("sec-websocket-extensions"),
+					context
+				);
+			},
 			open: (ws) => {
 				const clientId = `client-${this.nextClientId++}`;
 				this.clientIds.set(ws, clientId);
@@ -195,6 +230,26 @@ export class RTRQServer extends EventEmitter {
 							error: "Access denied",
 							message:
 								"Your IP is not allowed to access this endpoint",
+						}),
+					);
+					return;
+				}
+			}
+
+			// Check secret key authentication if configured
+			if (this.secretKey) {
+				const authHeader = req.getHeader("authorization");
+				const providedKey = authHeader?.startsWith("Bearer ") 
+					? authHeader.slice(7) 
+					: authHeader;
+				
+				if (providedKey !== this.secretKey) {
+					res.writeStatus("401 Unauthorized");
+					res.writeHeader("Content-Type", "application/json");
+					res.end(
+						JSON.stringify({
+							error: "Unauthorized",
+							message: "Invalid or missing secret key",
 						}),
 					);
 					return;

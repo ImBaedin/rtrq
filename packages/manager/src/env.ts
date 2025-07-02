@@ -5,14 +5,20 @@ dotenv.config();
 
 const envSchema = v.object({
 	PORT: v.pipe(
-		v.number(),
+		v.string(),
 		v.transform((value) => Number(value)),
+		v.number(),
 		v.minValue(1000),
 	),
 	NODE_ENV: v.optional(
 		v.picklist(["development", "test", "production"]),
 		"development",
 	),
+	RTRQ_SECRET_KEY: v.pipe(
+		v.string(),
+		v.minLength(1, "RTRQ_SECRET_KEY is required"),
+	),
+	RTRQ_CORS_ORIGIN: v.optional(v.string()),
 });
 
 const env = v.safeParse(envSchema, process.env);
