@@ -69,11 +69,23 @@ RTRQ_MAX_BODY_SIZE=5242880
 
 ## Usage
 
-### Client Connections
+### WebSocket Connections
 
-WebSocket clients can connect to:
+#### **Application Servers**
+Backend services connect with secret key authentication:
+```javascript
+const ws = new WebSocket('ws://localhost:8080/', {
+  headers: {
+    'Authorization': 'Bearer your-secret-key-here'
+  }
+});
 ```
-ws://localhost:8080/
+
+#### **User Clients (Browsers)**
+Browsers connect automatically with origin headers:
+```javascript
+// Browser automatically sends Origin header
+const ws = new WebSocket('ws://localhost:8080/');
 ```
 
 ### Invalidating Queries
@@ -105,18 +117,43 @@ curl -X POST http://localhost:8080/invalidate \
 
 ## Security Features
 
-### Authentication
-- All invalidation requests require a valid secret key
-- Secret key can be provided as `Authorization: Bearer <key>` or `Authorization: <key>`
+### Dual Client Authentication
+The server automatically detects and handles two types of clients:
+
+#### **Application Servers**
+- **Authentication**: Must provide secret key via `Authorization` header
+- **No Origin Required**: Servers don't send browser origin headers
+- **Use Case**: Backend services connecting to invalidate queries
+
+#### **User Clients (Browsers)**
+- **Authentication**: Must provide `Origin` header (automatic from browsers)
+- **No Secret Key Required**: Browsers can't securely store server secrets
+- **Use Case**: Frontend applications subscribing to real-time updates
 
 ### Access Control
-- **CORS**: Optionally restrict WebSocket connections to specific origins
-- **IP Whitelisting**: Optionally restrict both connections and invalidations to specific IP addresses
-- **Request Size Limits**: Configurable maximum request body size
+- **CORS**: Optionally restrict user client connections to specific origins
+- **IP Whitelisting**: Optionally restrict both server and client connections to specific IP addresses
+- **Request Size Limits**: Configurable maximum request body size for invalidation requests
+- **Automatic Client Detection**: No configuration needed - clients are identified by their headers
+
+### Authentication Flow
+```
+┌─ Has Authorization Header? ─┐
+│                             │
+Yes (Server)                 No
+│                             │
+├─ Validate Secret Key        └─ Has Origin Header? ─┐
+├─ Check IP Whitelist                                 │
+└─ Allow Connection                                  Yes (Browser)
+                                                      │
+                                                     ├─ Validate CORS Origin
+                                                     ├─ Check IP Whitelist  
+                                                     └─ Allow Connection
+```
 
 ### Headers Checked
-- `Origin` header for CORS validation
-- `Authorization` header for secret key authentication
+- `Authorization` header for server authentication
+- `Origin` header for browser client validation and CORS
 - `X-Forwarded-For` and `X-Real-IP` headers for IP validation
 
 ## Monitoring and Logging
@@ -140,10 +177,19 @@ The server provides comprehensive logging for all events:
    Allowed IPs: All IPs allowed
    Max Body Size: 1.0MB
 
+🔑 Server connection detected with valid secret key
+✅ Server connection allowed
 ✅ Client connected: client-1 (total: 1)
-🔔 Query subscription: ["todos","user-123"] by client-1 (subscribers: 1)
+
+🌐 User client connection detected from origin: https://myapp.com
+✅ User client connection allowed
+✅ Client connected: client-2 (total: 2)
+
+🔔 Query subscription: ["todos","user-123"] by client-2 (subscribers: 1)
 🔄 Query invalidated: ["todos","user-123"] (notified 1 clients)
-❌ Client disconnected: client-1 (remaining: 0)
+
+🚫 Connection denied: No valid authentication (missing secret key or origin header)
+❌ Client disconnected: client-1 (remaining: 1)
 ```
 
 ## Deployment

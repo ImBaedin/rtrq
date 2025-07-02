@@ -74,28 +74,52 @@ function main() {
 	// Set up authentication and authorization hooks
 	server
 		.onBeforeConnection((event: BeforeConnectionEvent) => {
-			// Check CORS origin if configured
-			if (corsOrigin) {
-				const origin = event.headers.origin;
-				if (origin !== corsOrigin) {
-					console.log(`🚫 Connection denied: Invalid origin ${origin} (expected: ${corsOrigin})`);
-					event.deny(`Origin ${origin} not allowed`);
-					return;
-				}
-			}
+			const authHeader = event.headers.authorization;
+			const origin = event.headers.origin;
+			const clientIp = event.headers["x-forwarded-for"] || event.headers["x-real-ip"];
 			
-			// Check allowed IPs if configured
-			if (allowedIps) {
-				const clientIp = event.headers["x-forwarded-for"] || event.headers["x-real-ip"];
-				if (!clientIp || allowedIps.indexOf(clientIp) === -1) {
-					console.log(`🚫 Connection denied: IP ${clientIp} not in allowed list`);
+			// Determine client type based on provided credentials
+			const hasSecretKey = authHeader && (authHeader === secretKey || authHeader === `Bearer ${secretKey}`);
+			const hasOrigin = !!origin;
+			
+			if (hasSecretKey) {
+				// This is an application server connection
+				console.log(`🔑 Server connection detected with valid secret key`);
+				
+				// Check allowed IPs if configured (servers must still respect IP restrictions)
+				if (allowedIps && clientIp && allowedIps.indexOf(clientIp) === -1) {
+					console.log(`🚫 Server connection denied: IP ${clientIp} not in allowed list`);
 					event.deny(`IP address ${clientIp} not allowed`);
 					return;
 				}
+				
+				console.log(`✅ Server connection allowed`);
+				event.allow();
+			} else if (hasOrigin) {
+				// This is a user client connection (browser)
+				console.log(`🌐 User client connection detected from origin: ${origin}`);
+				
+				// Check CORS origin if configured
+				if (corsOrigin && origin !== corsOrigin) {
+					console.log(`🚫 Client connection denied: Invalid origin ${origin} (expected: ${corsOrigin})`);
+					event.deny(`Origin ${origin} not allowed`);
+					return;
+				}
+				
+				// Check allowed IPs if configured
+				if (allowedIps && clientIp && allowedIps.indexOf(clientIp) === -1) {
+					console.log(`🚫 Client connection denied: IP ${clientIp} not in allowed list`);
+					event.deny(`IP address ${clientIp} not allowed`);
+					return;
+				}
+				
+				console.log(`✅ User client connection allowed`);
+				event.allow();
+			} else {
+				// Neither server credentials nor browser origin - reject
+				console.log(`🚫 Connection denied: No valid authentication (missing secret key or origin header)`);
+				event.deny("Authentication required: provide either secret key (servers) or origin header (browsers)");
 			}
-			
-			// Allow the connection
-			event.allow();
 		})
 		.onBeforeInvalidation((event: BeforeInvalidationEvent) => {
 			// Check secret key authentication
