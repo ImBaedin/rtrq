@@ -59,6 +59,7 @@ This Turborepo includes the following packages/apps:
 ### Apps and Packages
 
 - ✨`apps/rtrq-self-hosted`: Batteries included server that you can self host wherever you want
+- `apps/dev-app`: Web app for development
 - ✨`packages/manager`: Serverside manager. This handles broadcasting invalidation events
 - ✨`packages/server`: The RTRQ server package. Use this to trigger invalidations after CRUD operations
 - `packages/adapters`: Adapters for different data sources and sinks
