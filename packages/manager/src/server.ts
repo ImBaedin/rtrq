@@ -43,6 +43,19 @@ export type ClientDisconnectionEvent = {
 	removedSubscriptions: unknown[];
 };
 
+export type BeforeInvalidationEvent = {
+	key: unknown[];
+	headers: Record<string, string>;
+	allow: () => void;
+	deny: (message?: string) => void;
+};
+
+export type BeforeConnectionEvent = {
+	headers: Record<string, string>;
+	allow: () => void;
+	deny: (message?: string) => void;
+};
+
 // Schema for the invalidation request body
 const invalidationRequestSchema = v.object({
 	key: v.array(v.unknown()),
@@ -51,25 +64,10 @@ const invalidationRequestSchema = v.object({
 export interface RTRQServerOptions {
 	appOptions?: AppOptions;
 	/**
-	 * List of IP addresses allowed to access the invalidation endpoint
-	 * If not provided, no IP restrictions are applied
-	 */
-	allowedIps?: string[];
-	/**
 	 * Maximum size of the request body in bytes
 	 * Defaults to 1MB
 	 */
 	maxBodySize?: number;
-	/**
-	 * Secret key required for invalidation requests
-	 * If not provided, no authentication is required
-	 */
-	secretKey?: string;
-	/**
-	 * CORS origin to allow for WebSocket connections
-	 * If not provided, all origins are allowed
-	 */
-	corsOrigin?: string;
 }
 
 export class RTRQServer extends EventEmitter {
@@ -77,30 +75,43 @@ export class RTRQServer extends EventEmitter {
 	private subscriptions: Map<string, Set<WebSocket<unknown>>> = new Map();
 	private clientIds: Map<WebSocket<unknown>, string> = new Map();
 	private nextClientId = 1;
-	private readonly allowedIps: Set<string>;
 	private readonly maxBodySize: number;
-	private readonly secretKey?: string;
-	private readonly corsOrigin?: string;
 
 	constructor(options?: RTRQServerOptions) {
 		super();
 		this.app = App(options?.appOptions);
-		this.allowedIps = new Set(options?.allowedIps || []);
 		this.maxBodySize = options?.maxBodySize || 1024 * 1024; // Default 1MB
-		this.secretKey = options?.secretKey;
-		this.corsOrigin = options?.corsOrigin;
 
 		this.app.ws("/", {
 			upgrade: (res, req, context) => {
-				// Check CORS origin if configured
-				if (this.corsOrigin) {
-					const origin = req.getHeader("origin");
-					if (origin !== this.corsOrigin) {
-						res.writeStatus("403 Forbidden");
-						res.writeHeader("Content-Type", "application/json");
-						res.end(JSON.stringify({ error: "Origin not allowed" }));
-						return;
+				let isAllowed = true;
+				let denyMessage = "Connection denied";
+
+				// Create headers object from request
+				const headers: Record<string, string> = {};
+				req.forEach((key, value) => {
+					headers[key] = value;
+				});
+
+				// Create event object for beforeConnection hook
+				const event: BeforeConnectionEvent = {
+					headers,
+					allow: () => { isAllowed = true; },
+					deny: (message?: string) => { 
+						isAllowed = false; 
+						if (message) denyMessage = message;
 					}
+				};
+
+				// Emit beforeConnection event
+				this.emit("before:connection", event);
+
+				// Check if connection is allowed
+				if (!isAllowed) {
+					res.writeStatus("403 Forbidden");
+					res.writeHeader("Content-Type", "application/json");
+					res.end(JSON.stringify({ error: denyMessage }));
+					return;
 				}
 				
 				// Proceed with WebSocket upgrade
@@ -219,42 +230,6 @@ export class RTRQServer extends EventEmitter {
 
 		// Setup invalidation endpoint
 		this.app.post("/invalidate", async (res, req) => {
-			// Check IP allow-list if configured
-			if (this.allowedIps.size > 0) {
-				const clientIp = req.getHeader("x-forwarded-for");
-				if (!clientIp || !this.allowedIps.has(clientIp)) {
-					res.writeStatus("403 Forbidden");
-					res.writeHeader("Content-Type", "application/json");
-					res.end(
-						JSON.stringify({
-							error: "Access denied",
-							message:
-								"Your IP is not allowed to access this endpoint",
-						}),
-					);
-					return;
-				}
-			}
-
-			// Check secret key authentication if configured
-			if (this.secretKey) {
-				const authHeader = req.getHeader("authorization");
-				const providedKey = authHeader?.startsWith("Bearer ") 
-					? authHeader.slice(7) 
-					: authHeader;
-				
-				if (providedKey !== this.secretKey) {
-					res.writeStatus("401 Unauthorized");
-					res.writeHeader("Content-Type", "application/json");
-					res.end(
-						JSON.stringify({
-							error: "Unauthorized",
-							message: "Invalid or missing secret key",
-						}),
-					);
-					return;
-				}
-			}
 
 			// Track body size
 			let bodySize = 0;
@@ -295,6 +270,41 @@ export class RTRQServer extends EventEmitter {
 								JSON.stringify({
 									error: "Invalid request body",
 									details: result.issues,
+								}),
+							);
+							return;
+						}
+
+						// Create headers object from request
+						const headers: Record<string, string> = {};
+						req.forEach((key, value) => {
+							headers[key] = value;
+						});
+
+						let isAllowed = true;
+						let denyMessage = "Invalidation denied";
+
+						// Create event object for beforeInvalidation hook
+						const event: BeforeInvalidationEvent = {
+							key: result.output.key,
+							headers,
+							allow: () => { isAllowed = true; },
+							deny: (message?: string) => { 
+								isAllowed = false; 
+								if (message) denyMessage = message;
+							}
+						};
+
+						// Emit beforeInvalidation event
+						this.emit("before:invalidation", event);
+
+						// Check if invalidation is allowed
+						if (!isAllowed) {
+							res.writeStatus("403 Forbidden");
+							res.writeHeader("Content-Type", "application/json");
+							res.end(
+								JSON.stringify({
+									error: denyMessage,
 								}),
 							);
 							return;
@@ -377,6 +387,28 @@ export class RTRQServer extends EventEmitter {
 		callback: (event: ClientDisconnectionEvent) => void,
 	) {
 		this.on("client:disconnect", callback);
+		return this;
+	}
+
+	/**
+	 * Subscribe to before connection events
+	 * Use this to control which clients can connect
+	 */
+	public onBeforeConnection(
+		callback: (event: BeforeConnectionEvent) => void,
+	) {
+		this.on("before:connection", callback);
+		return this;
+	}
+
+	/**
+	 * Subscribe to before invalidation events
+	 * Use this to control which invalidation requests are allowed
+	 */
+	public onBeforeInvalidation(
+		callback: (event: BeforeInvalidationEvent) => void,
+	) {
+		this.on("before:invalidation", callback);
 		return this;
 	}
 

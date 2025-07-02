@@ -1,7 +1,16 @@
 #!/usr/bin/env node
 
 import { config } from "dotenv";
-import { createRTRQ } from "@rtrq/manager";
+import { 
+	createRTRQ,
+	BeforeConnectionEvent,
+	BeforeInvalidationEvent,
+	ClientConnectionEvent,
+	ClientDisconnectionEvent,
+	QuerySubscriptionEvent,
+	QueryUnsubscriptionEvent,
+	QueryInvalidationEvent
+} from "@rtrq/manager";
 
 // Load environment variables
 config();
@@ -59,30 +68,80 @@ function main() {
 	
 	// Create and configure the RTRQ server
 	const server = createRTRQ({
-		secretKey,
-		corsOrigin,
-		allowedIps,
 		maxBodySize,
 	});
 	
+	// Set up authentication and authorization hooks
+	server
+		.onBeforeConnection((event: BeforeConnectionEvent) => {
+			// Check CORS origin if configured
+			if (corsOrigin) {
+				const origin = event.headers.origin;
+				if (origin !== corsOrigin) {
+					console.log(`🚫 Connection denied: Invalid origin ${origin} (expected: ${corsOrigin})`);
+					event.deny(`Origin ${origin} not allowed`);
+					return;
+				}
+			}
+			
+			// Check allowed IPs if configured
+			if (allowedIps) {
+				const clientIp = event.headers["x-forwarded-for"] || event.headers["x-real-ip"];
+				if (!clientIp || allowedIps.indexOf(clientIp) === -1) {
+					console.log(`🚫 Connection denied: IP ${clientIp} not in allowed list`);
+					event.deny(`IP address ${clientIp} not allowed`);
+					return;
+				}
+			}
+			
+			// Allow the connection
+			event.allow();
+		})
+		.onBeforeInvalidation((event: BeforeInvalidationEvent) => {
+			// Check secret key authentication
+			const authHeader = event.headers.authorization;
+			const providedKey = authHeader?.startsWith("Bearer ") 
+				? authHeader.slice(7) 
+				: authHeader;
+			
+			if (providedKey !== secretKey) {
+				console.log(`🚫 Invalidation denied: Invalid secret key provided`);
+				event.deny("Invalid or missing secret key");
+				return;
+			}
+			
+			// Check allowed IPs if configured
+			if (allowedIps) {
+				const clientIp = event.headers["x-forwarded-for"] || event.headers["x-real-ip"];
+				if (!clientIp || allowedIps.indexOf(clientIp) === -1) {
+					console.log(`🚫 Invalidation denied: IP ${clientIp} not in allowed list`);
+					event.deny(`IP address ${clientIp} not allowed`);
+					return;
+				}
+			}
+			
+			// Allow the invalidation
+			event.allow();
+		});
+	
 	// Set up event listeners for monitoring
 	server
-		.onClientConnect((event) => {
+		.onClientConnect((event: ClientConnectionEvent) => {
 			console.log(`✅ Client connected: ${event.clientId} (total: ${event.totalConnections})`);
 		})
-		.onClientDisconnect((event) => {
+		.onClientDisconnect((event: ClientDisconnectionEvent) => {
 			console.log(`❌ Client disconnected: ${event.clientId} (remaining: ${event.remainingConnections})`);
 			if (event.removedSubscriptions.length > 0) {
 				console.log(`   Removed ${event.removedSubscriptions.length} subscription(s)`);
 			}
 		})
-		.onQuerySubscribe((event) => {
+		.onQuerySubscribe((event: QuerySubscriptionEvent) => {
 			console.log(`🔔 Query subscription: ${JSON.stringify(event.key)} by ${event.clientId} (subscribers: ${event.totalSubscribers})`);
 		})
-		.onQueryUnsubscribe((event) => {
+		.onQueryUnsubscribe((event: QueryUnsubscriptionEvent) => {
 			console.log(`🔕 Query unsubscription: ${JSON.stringify(event.key)} by ${event.clientId} (remaining: ${event.remainingSubscribers})`);
 		})
-		.onQueryInvalidate((event) => {
+		.onQueryInvalidate((event: QueryInvalidationEvent) => {
 			console.log(`🔄 Query invalidated: ${JSON.stringify(event.key)} (notified ${event.notifiedClients} clients)`);
 		});
 	
