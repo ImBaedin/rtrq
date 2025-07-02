@@ -108,19 +108,18 @@ export class RTRQServer extends EventEmitter {
 				let denyMessage = "Connection denied";
 
 				// Create headers object from request
-				const headers: Record<string, string> = {};
-				req.forEach((key, value) => {
-					headers[key] = value;
-				});
+				const headers = this.extractHeaders(req);
 
 				// Create event object for beforeConnection hook
 				const event: BeforeConnectionEvent = {
 					headers,
-					allow: () => { isAllowed = true; },
-					deny: (message?: string) => { 
-						isAllowed = false; 
+					allow: () => {
+						isAllowed = true;
+					},
+					deny: (message?: string) => {
+						isAllowed = false;
 						if (message) denyMessage = message;
-					}
+					},
 				};
 
 				// Emit beforeConnection event
@@ -134,16 +133,16 @@ export class RTRQServer extends EventEmitter {
 					return;
 				}
 
-				// Store the request for later use (from incoming commit)
+				// Store the request for later use
 				(context as any).request = req;
-				
+
 				// Proceed with WebSocket upgrade
 				res.upgrade(
 					{},
 					req.getHeader("sec-websocket-key"),
 					req.getHeader("sec-websocket-protocol"),
 					req.getHeader("sec-websocket-extensions"),
-					context
+					context,
 				);
 			},
 			open: (ws) => {
@@ -263,7 +262,6 @@ export class RTRQServer extends EventEmitter {
 
 		// Setup invalidation endpoint
 		this.app.post("/invalidate", async (res, req) => {
-
 			// Track body size
 			let bodySize = 0;
 			let body = "";
@@ -309,10 +307,7 @@ export class RTRQServer extends EventEmitter {
 						}
 
 						// Create headers object from request
-						const headers: Record<string, string> = {};
-						req.forEach((key, value) => {
-							headers[key] = value;
-						});
+						const headers = this.extractHeaders(req);
 
 						let isAllowed = true;
 						let denyMessage = "Invalidation denied";
@@ -321,11 +316,13 @@ export class RTRQServer extends EventEmitter {
 						const event: BeforeInvalidationEvent = {
 							key: result.output.key,
 							headers,
-							allow: () => { isAllowed = true; },
-							deny: (message?: string) => { 
-								isAllowed = false; 
+							allow: () => {
+								isAllowed = true;
+							},
+							deny: (message?: string) => {
+								isAllowed = false;
 								if (message) denyMessage = message;
-							}
+							},
 						};
 
 						// Emit beforeInvalidation event
@@ -375,6 +372,17 @@ export class RTRQServer extends EventEmitter {
 				console.error("Invalidation request aborted");
 			});
 		});
+	}
+
+	/**
+	 * Extract headers from a request object into a Record<string, string>
+	 */
+	private extractHeaders(req: HttpRequest): Record<string, string> {
+		const headers: Record<string, string> = {};
+		req.forEach((key, value) => {
+			headers[key] = value;
+		});
+		return headers;
 	}
 
 	/**
