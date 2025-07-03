@@ -1,103 +1,663 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRTRQ } from "@rtrq/react-query";
+import { useState, useEffect, useRef } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { WebSocketClient } from "@rtrq/core";
+import { 
+  Activity, 
+  Wifi, 
+  WifiOff, 
+  Database, 
+  Zap, 
+  Clock,
+  Users,
+  MessageSquare,
+  RefreshCw,
+  Server
+} from "lucide-react";
+
+interface LogEntry {
+  id: string;
+  type: 'connection' | 'subscription' | 'unsubscription' | 'invalidation' | 'query';
+  timestamp: Date;
+  payload: any;
+  details: string;
+}
+
+// Sample data fetchers for testing
+const fetchUsers = async () => {
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  return Array.from({ length: 5 }, (_, i) => ({
+    id: i + 1,
+    name: `User ${i + 1}`,
+    email: `user${i + 1}@example.com`,
+    lastActive: new Date(Date.now() - Math.random() * 86400000).toISOString(),
+  }));
+};
+
+const fetchPosts = async () => {
+  await new Promise(resolve => setTimeout(resolve, 800));
+  return Array.from({ length: 3 }, (_, i) => ({
+    id: i + 1,
+    title: `Post ${i + 1}`,
+    content: `This is the content of post ${i + 1}`,
+    author: `Author ${i + 1}`,
+    createdAt: new Date(Date.now() - Math.random() * 86400000).toISOString(),
+  }));
+};
+
+const fetchComments = async () => {
+  await new Promise(resolve => setTimeout(resolve, 600));
+  return Array.from({ length: 8 }, (_, i) => ({
+    id: i + 1,
+    text: `Comment ${i + 1}`,
+    author: `Commenter ${i + 1}`,
+    postId: Math.floor(Math.random() * 3) + 1,
+    createdAt: new Date(Date.now() - Math.random() * 86400000).toISOString(),
+  }));
+};
+
+const fetchStats = async () => {
+  await new Promise(resolve => setTimeout(resolve, 400));
+  return {
+    totalUsers: Math.floor(Math.random() * 1000) + 100,
+    activeUsers: Math.floor(Math.random() * 100) + 10,
+    totalPosts: Math.floor(Math.random() * 500) + 50,
+    totalComments: Math.floor(Math.random() * 2000) + 200,
+    serverLoad: Math.floor(Math.random() * 100),
+  };
+};
+
+export default function RTRQDevApp() {
+  const queryClient = useQueryClient();
+  const [connectionState, setConnectionState] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [wsClient, setWsClient] = useState<WebSocketClient | null>(null);
+  const logIdCounter = useRef(0);
+
+  // Initialize RTRQ
+  useRTRQ({
+    url: "ws://localhost:8080", // Default fallback - will use default if server not available
+    options: {
+      reconnect: true,
+      reconnectAttempts: 3,
+      reconnectInterval: 2000,
+    }
+  });
+
+  // Test queries for demonstration
+  const usersQuery = useQuery({
+    queryKey: ['users'],
+    queryFn: fetchUsers,
+    staleTime: 30000,
+  });
+
+  const postsQuery = useQuery({
+    queryKey: ['posts'],
+    queryFn: fetchPosts,
+    staleTime: 30000,
+  });
+
+  const commentsQuery = useQuery({
+    queryKey: ['comments'],
+    queryFn: fetchComments,
+    staleTime: 30000,
+  });
+
+  const statsQuery = useQuery({
+    queryKey: ['stats'],
+    queryFn: fetchStats,
+    staleTime: 15000,
+  });
+
+  // Conditional queries that can be enabled/disabled
+  const [enableOptionalQuery1, setEnableOptionalQuery1] = useState(false);
+  const [enableOptionalQuery2, setEnableOptionalQuery2] = useState(false);
+
+  const optionalQuery1 = useQuery({
+    queryKey: ['optional', 'query1'],
+    queryFn: async () => {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return { data: 'Optional Query 1 Data', timestamp: new Date().toISOString() };
+    },
+    enabled: enableOptionalQuery1,
+    staleTime: 20000,
+  });
+
+  const optionalQuery2 = useQuery({
+    queryKey: ['optional', 'query2'],
+    queryFn: async () => {
+      await new Promise(resolve => setTimeout(resolve, 700));
+      return { data: 'Optional Query 2 Data', timestamp: new Date().toISOString() };
+    },
+    enabled: enableOptionalQuery2,
+    staleTime: 25000,
+  });
+
+  // Add log entry helper
+  const addLog = (type: LogEntry['type'], payload: any, details: string) => {
+    const logEntry: LogEntry = {
+      id: `log-${++logIdCounter.current}`,
+      type,
+      timestamp: new Date(),
+      payload,
+      details,
+    };
+    setLogs(prev => [logEntry, ...prev].slice(0, 100)); // Keep last 100 logs
+  };
+
+  // Monitor connection state
+  useEffect(() => {
+    // Since we can't directly access the WebSocket from useRTRQ,
+    // we'll simulate connection state based on query activity
+    setConnectionState('connecting');
+    
+    const timer = setTimeout(() => {
+      setConnectionState('connected');
+      addLog('connection', { state: 'connected' }, 'Connected to RTRQ server');
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Get active queries
+  const activeQueries = queryClient.getQueryCache().getAll().filter(query => 
+    query.getObserversCount() > 0
+  );
+
+  // Server action simulators
+  const triggerInvalidation = (queryKey: string[]) => {
+    queryClient.invalidateQueries({ queryKey });
+    addLog('invalidation', { queryKey }, `Manually triggered invalidation for ${JSON.stringify(queryKey)}`);
+  };
+
+  const triggerServerInvalidation = (queryKey: string[]) => {
+    // This would normally send a server-side invalidation
+    // For demo purposes, we'll simulate it
+    setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey });
+      addLog('invalidation', { queryKey, source: 'server' }, `Server triggered invalidation for ${JSON.stringify(queryKey)}`);
+    }, 500);
+  };
+
+  // Format timestamp
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('en-US', { 
+      hour12: false, 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      second: '2-digit',
+      fractionalSecondDigits: 3
+    });
+  };
+
+  // Get status badge variant
+  const getStatusVariant = (state: string) => {
+    switch (state) {
+      case 'connected': return 'default';
+      case 'connecting': return 'secondary';
+      case 'error': return 'destructive';
+      default: return 'outline';
+    }
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="min-h-screen p-6 space-y-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">RTRQ Development Dashboard</h1>
+            <p className="text-muted-foreground mt-1">
+              Real-time query invalidation testing environment
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Badge variant={getStatusVariant(connectionState)} className="flex items-center gap-2">
+              {connectionState === 'connected' ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
+              {connectionState.charAt(0).toUpperCase() + connectionState.slice(1)}
+            </Badge>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        {/* Connection Status & Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Connection</CardTitle>
+              <Activity className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold capitalize">{connectionState}</div>
+              <p className="text-xs text-muted-foreground">
+                WebSocket status
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Queries</CardTitle>
+              <Database className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{activeQueries.length}</div>
+              <p className="text-xs text-muted-foreground">
+                Currently subscribed
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Log Entries</CardTitle>
+              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{logs.length}</div>
+              <p className="text-xs text-muted-foreground">
+                Total interactions
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Server Load</CardTitle>
+              <Server className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{statsQuery.data?.serverLoad || 0}%</div>
+              <p className="text-xs text-muted-foreground">
+                Simulated load
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          {/* Active Queries Section */}
+          <div className="xl:col-span-2 space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Database className="w-5 h-5" />
+                  Active Query Subscriptions
+                </CardTitle>
+                <CardDescription>
+                  Live queries being monitored by RTRQ
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Core Queries */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Users className="w-4 h-4 text-blue-500" />
+                        <div>
+                          <div className="font-medium">Users Query</div>
+                          <div className="text-sm text-muted-foreground">['users']</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={usersQuery.isLoading ? 'secondary' : usersQuery.isError ? 'destructive' : 'default'}>
+                          {usersQuery.isLoading ? 'Loading' : usersQuery.isError ? 'Error' : 'Success'}
+                        </Badge>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => triggerInvalidation(['users'])}
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <MessageSquare className="w-4 h-4 text-green-500" />
+                        <div>
+                          <div className="font-medium">Posts Query</div>
+                          <div className="text-sm text-muted-foreground">['posts']</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={postsQuery.isLoading ? 'secondary' : postsQuery.isError ? 'destructive' : 'default'}>
+                          {postsQuery.isLoading ? 'Loading' : postsQuery.isError ? 'Error' : 'Success'}
+                        </Badge>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => triggerInvalidation(['posts'])}
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <MessageSquare className="w-4 h-4 text-purple-500" />
+                        <div>
+                          <div className="font-medium">Comments Query</div>
+                          <div className="text-sm text-muted-foreground">['comments']</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={commentsQuery.isLoading ? 'secondary' : commentsQuery.isError ? 'destructive' : 'default'}>
+                          {commentsQuery.isLoading ? 'Loading' : commentsQuery.isError ? 'Error' : 'Success'}
+                        </Badge>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => triggerInvalidation(['comments'])}
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Activity className="w-4 h-4 text-orange-500" />
+                        <div>
+                          <div className="font-medium">Stats Query</div>
+                          <div className="text-sm text-muted-foreground">['stats']</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={statsQuery.isLoading ? 'secondary' : statsQuery.isError ? 'destructive' : 'default'}>
+                          {statsQuery.isLoading ? 'Loading' : statsQuery.isError ? 'Error' : 'Success'}
+                        </Badge>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => triggerInvalidation(['stats'])}
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Optional Queries */}
+                <div className="border-t pt-4">
+                  <h4 className="font-medium mb-3">Optional Queries</h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-4 h-4 rounded-full ${enableOptionalQuery1 ? 'bg-green-500' : 'bg-gray-300'}`} />
+                        <div>
+                          <div className="font-medium">Optional Query 1</div>
+                          <div className="text-sm text-muted-foreground">['optional', 'query1']</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant={enableOptionalQuery1 ? "destructive" : "default"}
+                          onClick={() => setEnableOptionalQuery1(!enableOptionalQuery1)}
+                        >
+                          {enableOptionalQuery1 ? 'Disable' : 'Enable'}
+                        </Button>
+                        {enableOptionalQuery1 && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => triggerInvalidation(['optional', 'query1'])}
+                          >
+                            <RefreshCw className="w-3 h-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-4 h-4 rounded-full ${enableOptionalQuery2 ? 'bg-green-500' : 'bg-gray-300'}`} />
+                        <div>
+                          <div className="font-medium">Optional Query 2</div>
+                          <div className="text-sm text-muted-foreground">['optional', 'query2']</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant={enableOptionalQuery2 ? "destructive" : "default"}
+                          onClick={() => setEnableOptionalQuery2(!enableOptionalQuery2)}
+                        >
+                          {enableOptionalQuery2 ? 'Disable' : 'Enable'}
+                        </Button>
+                        {enableOptionalQuery2 && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => triggerInvalidation(['optional', 'query2'])}
+                          >
+                            <RefreshCw className="w-3 h-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Server Actions */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="w-5 h-5" />
+                  Server Actions
+                </CardTitle>
+                <CardDescription>
+                  Trigger invalidations and test server communications
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <h4 className="font-medium">Manual Invalidations</h4>
+                    <Button
+                      onClick={() => triggerInvalidation(['users'])}
+                      className="w-full justify-start"
+                      variant="outline"
+                    >
+                      <Users className="w-4 h-4 mr-2" />
+                      Invalidate Users
+                    </Button>
+                    <Button
+                      onClick={() => triggerInvalidation(['posts'])}
+                      className="w-full justify-start"
+                      variant="outline"
+                    >
+                      <MessageSquare className="w-4 h-4 mr-2" />
+                      Invalidate Posts
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        triggerInvalidation(['users']);
+                        triggerInvalidation(['posts']);
+                        triggerInvalidation(['comments']);
+                      }}
+                      className="w-full justify-start"
+                      variant="outline"
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Invalidate All
+                    </Button>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h4 className="font-medium">Server-Side Triggers</h4>
+                    <Button
+                      onClick={() => triggerServerInvalidation(['users'])}
+                      className="w-full justify-start"
+                      variant="outline"
+                    >
+                      <Server className="w-4 h-4 mr-2" />
+                      Server Invalidate Users
+                    </Button>
+                    <Button
+                      onClick={() => triggerServerInvalidation(['stats'])}
+                      className="w-full justify-start"
+                      variant="outline"
+                    >
+                      <Activity className="w-4 h-4 mr-2" />
+                      Server Invalidate Stats
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        triggerServerInvalidation(['users']);
+                        triggerServerInvalidation(['posts']);
+                        triggerServerInvalidation(['comments']);
+                        triggerServerInvalidation(['stats']);
+                      }}
+                      className="w-full justify-start"
+                      variant="outline"
+                    >
+                      <Zap className="w-4 h-4 mr-2" />
+                      Bulk Server Invalidate
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Interaction Log */}
+          <Card className="xl:col-span-1">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                RTRQ Interaction Log
+              </CardTitle>
+              <CardDescription>
+                Real-time log of all RTRQ events and operations
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {logs.length === 0 && (
+                  <div className="text-center text-muted-foreground py-8">
+                    No interactions yet...
+                  </div>
+                )}
+                {logs.map((log) => (
+                  <div key={log.id} className="p-3 border rounded-lg text-sm">
+                    <div className="flex items-center justify-between mb-1">
+                      <Badge variant="outline" className="text-xs">
+                        {log.type}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {formatTime(log.timestamp)}
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {log.details}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 pt-3 border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setLogs([])}
+                  className="w-full"
+                >
+                  Clear Log
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Query Data Preview */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Sample Data Preview</CardTitle>
+              <CardDescription>Current query results</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <h4 className="font-medium mb-2">Users ({usersQuery.data?.length || 0})</h4>
+                <div className="text-sm text-muted-foreground">
+                  {usersQuery.data?.slice(0, 3).map(user => user.name).join(', ') || 'Loading...'}
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-medium mb-2">Posts ({postsQuery.data?.length || 0})</h4>
+                <div className="text-sm text-muted-foreground">
+                  {postsQuery.data?.slice(0, 2).map(post => post.title).join(', ') || 'Loading...'}
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-medium mb-2">Statistics</h4>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>Total Users: {statsQuery.data?.totalUsers || '...'}</div>
+                  <div>Active Users: {statsQuery.data?.activeUsers || '...'}</div>
+                  <div>Total Posts: {statsQuery.data?.totalPosts || '...'}</div>
+                  <div>Comments: {statsQuery.data?.totalComments || '...'}</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Query Cache Info</CardTitle>
+              <CardDescription>React Query cache details</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span>Total Queries:</span>
+                  <span>{queryClient.getQueryCache().getAll().length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Active Queries:</span>
+                  <span>{activeQueries.length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Stale Queries:</span>
+                  <span>{queryClient.getQueryCache().getAll().filter(q => q.isStale()).length}</span>
+                </div>
+                                 <div className="flex justify-between">
+                   <span>Loading Queries:</span>
+                   <span>{queryClient.getQueryCache().getAll().filter(q => q.state.fetchStatus === 'fetching').length}</span>
+                 </div>
+                
+                <div className="pt-3 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      queryClient.clear();
+                      addLog('query', {}, 'Cleared all query cache');
+                    }}
+                    className="w-full"
+                  >
+                    Clear All Cache
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
