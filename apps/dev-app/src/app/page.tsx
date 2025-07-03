@@ -78,16 +78,14 @@ export default function RTRQDevApp() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [wsClient, setWsClient] = useState<WebSocketClient | null>(null);
   const logIdCounter = useRef(0);
+  
+  // WebSocket URL configuration
+  const [wsUrl, setWsUrl] = useState("ws://localhost:3001");
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [rtrqConfig, setRtrqConfig] = useState<{url: string, options: any} | null>(null);
 
-  // Initialize RTRQ
-  useRTRQ({
-    url: "ws://localhost:8080", // Default fallback - will use default if server not available
-    options: {
-      reconnect: true,
-      reconnectAttempts: 3,
-      reconnectInterval: 2000,
-    }
-  });
+  // Initialize RTRQ only when config is set
+  useRTRQ(rtrqConfig || undefined);
 
   // Test queries for demonstration
   const usersQuery = useQuery({
@@ -150,19 +148,39 @@ export default function RTRQDevApp() {
     setLogs(prev => [logEntry, ...prev].slice(0, 100)); // Keep last 100 logs
   };
 
-  // Monitor connection state
-  useEffect(() => {
-    // Since we can't directly access the WebSocket from useRTRQ,
-    // we'll simulate connection state based on query activity
-    setConnectionState('connecting');
-    
-    const timer = setTimeout(() => {
-      setConnectionState('connected');
-      addLog('connection', { state: 'connected' }, 'Connected to RTRQ server');
-    }, 1000);
+  // Connection management
+  const connectToServer = () => {
+    if (!wsUrl.trim()) {
+      addLog('connection', { error: 'Invalid URL' }, 'Cannot connect: WebSocket URL is empty');
+      return;
+    }
 
-    return () => clearTimeout(timer);
-  }, []);
+    setIsConnecting(true);
+    setConnectionState('connecting');
+    addLog('connection', { url: wsUrl }, `Attempting to connect to ${wsUrl}`);
+
+    setRtrqConfig({
+      url: wsUrl,
+      options: {
+        reconnect: true,
+        reconnectAttempts: 3,
+        reconnectInterval: 2000,
+      }
+    });
+
+    // Simulate connection feedback (in real usage, this would come from RTRQ events)
+    setTimeout(() => {
+      setIsConnecting(false);
+      setConnectionState('connected');
+      addLog('connection', { state: 'connected', url: wsUrl }, `Connected to RTRQ server at ${wsUrl}`);
+    }, 1000);
+  };
+
+  const disconnectFromServer = () => {
+    setRtrqConfig(null);
+    setConnectionState('disconnected');
+    addLog('connection', { state: 'disconnected' }, 'Disconnected from RTRQ server');
+  };
 
   // Get active queries
   const activeQueries = queryClient.getQueryCache().getAll().filter(query => 
@@ -175,13 +193,36 @@ export default function RTRQDevApp() {
     addLog('invalidation', { queryKey }, `Manually triggered invalidation for ${JSON.stringify(queryKey)}`);
   };
 
-  const triggerServerInvalidation = (queryKey: string[]) => {
-    // This would normally send a server-side invalidation
-    // For demo purposes, we'll simulate it
-    setTimeout(() => {
-      queryClient.invalidateQueries({ queryKey });
-      addLog('invalidation', { queryKey, source: 'server' }, `Server triggered invalidation for ${JSON.stringify(queryKey)}`);
-    }, 500);
+  const triggerServerInvalidation = async (queryKey: string[]) => {
+    if (!rtrqConfig) {
+      addLog('invalidation', { error: 'No server connection' }, 'Cannot trigger server invalidation: not connected to RTRQ server');
+      return;
+    }
+
+    try {
+      // Convert WebSocket URL to HTTP URL for the invalidation endpoint
+      const httpUrl = rtrqConfig.url.replace('ws://', 'http://').replace('wss://', 'https://');
+      
+      addLog('invalidation', { queryKey, action: 'sending' }, `Sending server invalidation request for ${JSON.stringify(queryKey)}`);
+      
+      const response = await fetch(`${httpUrl}/invalidate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ key: queryKey }),
+      });
+
+      if (response.ok) {
+        addLog('invalidation', { queryKey, source: 'server', status: 'success' }, `Server invalidation successful for ${JSON.stringify(queryKey)}`);
+      } else {
+        const errorText = await response.text();
+        addLog('invalidation', { queryKey, source: 'server', status: 'error', error: errorText }, `Server invalidation failed: ${response.status} ${response.statusText}`);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      addLog('invalidation', { queryKey, source: 'server', status: 'error', error: errorMessage }, `Server invalidation error: ${errorMessage}`);
+    }
   };
 
   // Format timestamp
@@ -223,6 +264,72 @@ export default function RTRQDevApp() {
             </Badge>
           </div>
         </div>
+
+        {/* WebSocket Configuration */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Server className="w-5 h-5" />
+              RTRQ Server Configuration
+            </CardTitle>
+            <CardDescription>
+              Configure the WebSocket URL for the external RTRQ server
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-3 items-end">
+              <div className="flex-1">
+                <label htmlFor="ws-url" className="text-sm font-medium mb-2 block">
+                  WebSocket Server URL
+                </label>
+                <input
+                  id="ws-url"
+                  type="text"
+                  value={wsUrl}
+                  onChange={(e) => setWsUrl(e.target.value)}
+                  placeholder="ws://localhost:3001"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={connectionState === 'connected'}
+                />
+              </div>
+              <div className="flex gap-2">
+                {connectionState === 'disconnected' ? (
+                  <Button 
+                    onClick={connectToServer}
+                    disabled={isConnecting || !wsUrl.trim()}
+                    className="flex items-center gap-2"
+                  >
+                    <Wifi className="w-4 h-4" />
+                    {isConnecting ? 'Connecting...' : 'Connect'}
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={disconnectFromServer}
+                    variant="destructive"
+                    className="flex items-center gap-2"
+                  >
+                    <WifiOff className="w-4 h-4" />
+                    Disconnect
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div className="mt-3 text-sm text-muted-foreground">
+              {connectionState === 'disconnected' && (
+                <span>👆 Enter the URL of your RTRQ server and click Connect to start monitoring queries</span>
+              )}
+              {connectionState === 'connecting' && (
+                <span>⏳ Establishing connection to RTRQ server...</span>
+              )}
+              {connectionState === 'connected' && (
+                <span>✅ Connected to RTRQ server at <code>{wsUrl}</code></span>
+              )}
+              {connectionState === 'error' && (
+                <span>❌ Failed to connect to RTRQ server. Please check the URL and try again.</span>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Connection Status & Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">

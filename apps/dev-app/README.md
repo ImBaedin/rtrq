@@ -31,21 +31,51 @@ cd packages/core && pnpm build
 cd ../adapters/react-query && pnpm build
 ```
 
-### 3. Start the Test Server (Optional)
+### 3. Start the RTRQ Server
 
-The dev app includes a test WebSocket server that simulates RTRQ backend behavior:
+The RTRQ server runs externally using the manager package. You have two options:
+
+#### Option A: Use the Example Server (Recommended for Testing)
 
 ```bash
-# In a separate terminal
-cd apps/dev-app
-node server.js
+# Build the manager package first
+cd packages/manager && pnpm build
+
+# Go back to dev-app and start the example server
+cd ../../apps/dev-app
+node example-server.js
 ```
 
-The test server will:
-- Accept WebSocket connections on `ws://localhost:8080`
-- Handle subscription/unsubscription messages
-- Send automatic invalidations every 15 seconds
-- Log all interactions to the console
+#### Option B: Create Your Own Server
+
+Create a custom server using the `@rtrq/manager` package:
+
+```javascript
+const { createRTRQ } = require('@rtrq/manager');
+
+const server = createRTRQ({
+  allowedIps: [], // Optional: restrict invalidation endpoint access
+  maxBodySize: 1024 * 1024, // Optional: max request body size
+});
+
+// Add event listeners
+server.onClientConnect((event) => {
+  console.log(`Client connected: ${event.clientId}`);
+});
+
+server.onQueryInvalidate((event) => {
+  console.log(`Query invalidated: ${JSON.stringify(event.key)}`);
+});
+
+server.listen(3001);
+```
+
+The RTRQ server will:
+- Accept WebSocket connections (default: `ws://localhost:3001`)
+- Handle subscription/unsubscription messages from clients
+- Provide a POST `/invalidate` endpoint for triggering invalidations
+- Log all client connections and query operations
+- Support configurable options (port, allowed IPs, etc.)
 
 ### 4. Start the Development App
 
@@ -58,9 +88,17 @@ The app will be available at `http://localhost:3000`
 
 ## Using the Dashboard
 
+### Server Configuration
+
+Before using the dashboard, you need to configure the WebSocket server URL:
+
+1. **Enter Server URL**: Input the WebSocket URL of your running RTRQ server (e.g., `ws://localhost:3001`)
+2. **Connect**: Click the "Connect" button to establish connection
+3. **Monitor Status**: The connection status badge shows the current state
+
 ### Connection Status
 
-The top-right badge shows the current WebSocket connection status:
+The connection status badge shows the current WebSocket connection status:
 - **🟢 Connected**: Successfully connected to RTRQ server
 - **🟡 Connecting**: Attempting to establish connection
 - **🔴 Disconnected**: No active connection
@@ -95,9 +133,23 @@ Test different invalidation scenarios:
 - **Invalidate All**: Refresh all core queries at once
 
 #### Server-Side Triggers
-- **Server Invalidate Users**: Simulate server-triggered user data update
-- **Server Invalidate Stats**: Simulate server-triggered stats update
+- **Server Invalidate Users**: Simulate server-triggered user data update using HTTP POST
+- **Server Invalidate Stats**: Simulate server-triggered stats update using HTTP POST
 - **Bulk Server Invalidate**: Trigger multiple server-side invalidations
+
+**Note**: Server-side triggers use the RTRQ server's `/invalidate` endpoint. You can also trigger invalidations externally:
+
+```bash
+# Example: Invalidate users query
+curl -X POST http://localhost:3001/invalidate \
+  -H "Content-Type: application/json" \
+  -d '{"key": ["users"]}'
+
+# Example: Invalidate all posts
+curl -X POST http://localhost:3001/invalidate \
+  -H "Content-Type: application/json" \
+  -d '{"key": ["posts"]}'
+```
 
 ### Interaction Log
 
@@ -204,7 +256,8 @@ Messages follow the RTRQ protocol specification:
 ### Common Issues
 
 **Connection Failed**
-- Ensure the test server is running on port 8080
+- Ensure the RTRQ server is running (check manager package logs)
+- Verify the WebSocket URL is correct (default: `ws://localhost:3001`)
 - Check firewall settings
 - Verify WebSocket support in browser
 
