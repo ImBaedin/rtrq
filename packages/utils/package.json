@@ -8,7 +8,10 @@
 		"clean": "rm -rf .turbo node_modules",
 		"lint": "eslint .",
 		"lint:fix": "pnpm lint --fix",
-		"type-check": "tsc --noEmit"
+		"type-check": "tsc --noEmit",
+		"test": "vitest",
+		"test:watch": "vitest watch",
+		"test:coverage": "vitest run --coverage"
 	},
 	"keywords": [],
 	"author": "",
@@ -16,7 +19,8 @@
 	"devDependencies": {
 		"@rtrq/typescript-config": "workspace:*",
 		"@types/semver": "^7.7.0",
-		"typescript": "^5.8.2"
+		"typescript": "^5.8.2",
+		"vitest": "^1.3.1"
 	},
 	"dependencies": {
 		"semver": "^7.7.2",
