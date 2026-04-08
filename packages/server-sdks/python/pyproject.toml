@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling>=1.25.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rtrq-server-sdk"
+version = "0.1.0"
+description = "Python SDK for pushing RTRQ invalidation events."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "httpx>=0.27.0,<1.0.0",
+  "pydantic>=2.9.0,<3.0.0"
+]
+
+[dependency-groups]
+dev = [
+  "build>=1.2.2",
+  "pytest>=8.3.0"
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rtrq_server_sdk"]

@@ -1,0 +1,45 @@
+from typing import Any
+
+import httpx
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class RTRQServerSDKConfig(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    base_url: str
+    shared_secret: str
+    timeout: float = Field(default=5.0, gt=0)
+    api_prefix: str = "/v1"
+
+
+class RTRQServerSDK:
+    def __init__(
+        self,
+        config: RTRQServerSDKConfig,
+        client: httpx.AsyncClient | None = None,
+    ) -> None:
+        self.config = config
+        self._client = client or httpx.AsyncClient(
+            base_url=config.base_url,
+            timeout=config.timeout,
+        )
+
+    async def invalidate(
+        self,
+        keys: list[str],
+        *,
+        source: str | None = None,
+    ) -> httpx.Response:
+        payload: dict[str, Any] = {"keys": keys}
+        if source is not None:
+            payload["source"] = source
+
+        return await self._client.post(
+            f"{self.config.api_prefix}/invalidate",
+            json=payload,
+            headers={"x-rtrq-secret": self.config.shared_secret},
+        )
+
+    async def aclose(self) -> None:
+        await self._client.aclose()

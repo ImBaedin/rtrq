@@ -1,0 +1,26 @@
+{
+  "name": "rtrq",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "bun@1.2.10",
+  "workspaces": [
+    "packages/clients/core",
+    "packages/clients/adapters/*"
+  ],
+  "scripts": {
+    "build": "bun run build:ts && bun run build:py",
+    "build:ts": "bun run --filter @rtrq/client-core build && bun run --filter @rtrq/react-query build",
+    "build:py": "./scripts/build-python.sh",
+    "lock:py": "uv lock",
+    "setup:py": "./scripts/setup-python.sh",
+    "typecheck": "bun run --filter @rtrq/client-core typecheck && bun run --filter @rtrq/react-query typecheck",
+    "dev:core": "bun run --filter @rtrq/client-core dev",
+    "dev:react-query": "bun run --filter @rtrq/react-query dev",
+    "dev:server": "./scripts/run-server-dev.sh",
+    "clean": "rm -rf node_modules bun.lock dist packages/clients/core/dist packages/clients/core/*.tsbuildinfo packages/clients/adapters/*/dist packages/clients/adapters/*/*.tsbuildinfo apps/server/dist packages/server-sdks/python/dist"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5",
+    "typescript": "^5.8.3"
+  }
+}
