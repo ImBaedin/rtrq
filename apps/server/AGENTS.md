@@ -6,7 +6,7 @@ This document provides guidelines for AI agents working on FastAPI projects. Fol
 
 Organize code by domain, not by file type.
 
-```
+```text
 src/
 ├── {domain}/           # e.g., auth/, posts/, aws/
 │   ├── router.py       # API endpoints
@@ -28,8 +28,8 @@ src/
 **Import Convention**: Use explicit module names when importing across domains:
 
 ```python
-from src.auth import constants as auth_constants
-from src.notifications import service as notification_service
+from rtrq_server import config as server_config
+from rtrq_server import models as server_models
 ```
 
 ## Async Routes

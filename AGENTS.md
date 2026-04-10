@@ -9,7 +9,7 @@
 
 - RTRQ is a self-hosted real-time cache invalidation layer. It accelerates invalidation for React Query-style clients; it does not replace the application's existing fetch and refetch logic.
 - The core architecture is: app server calls RTRQ over HTTP, RTRQ fans invalidations out over WebSockets, Redis is the future inter-node backbone, and client adapters trigger library-native invalidation behavior.
-- Preserve the "degraded speed, not broken functionality" design goal. New work should fail safe when RTRQ is unavailable.
+- Preserve the "degraded speed, not broken functionality" design goal. New work should fail-safe when RTRQ is unavailable.
 
 ## Active Surfaces
 
