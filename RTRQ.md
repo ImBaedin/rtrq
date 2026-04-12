@@ -59,17 +59,50 @@ Built with **FastAPI**, the server handles two distinct roles in a single proces
 ### Invalidation Flow
 
 1. A mutation completes on the application server.
-2. The application server calls the RTRQ Server's HTTP endpoint via the Server SDK, passing the query key(s) to invalidate and a shared secret credential.
+2. The application server calls the RTRQ Server's HTTP endpoint via the Server SDK, passing the topic key(s) to invalidate and a shared secret credential.
 3. The RTRQ Server publishes the invalidation event to Redis.
-4. All WebSocket nodes subscribed to Redis receive the event and identify connected clients whose subscription set intersects with the invalidated keys.
-5. Matching clients receive a WebSocket message and their local Client SDK calls `invalidateQueries` with the received key(s).
+4. All WebSocket nodes subscribed to Redis receive the event and identify connected clients whose subscription set intersects with the invalidated topic keys.
+5. Matching clients receive a WebSocket message and their local Client SDK calls `invalidateQueries` with the received logical key prefix.
 6. React Query (or the equivalent library) executes its standard refetch logic.
 
 ### Query Key Semantics
 
-Query key matching is intentionally kept **server-side dumb**. The RTRQ server treats keys as opaque strings and performs exact matching only. Hierarchical/fuzzy matching (e.g., invalidating `['todos']` to match `['todos', userId, { filter: 'active' }]`) is the responsibility of the **receiving client**, which delegates directly to React Query's native `invalidateQueries` matching logic. This keeps the server free of library-specific semantics and ensures matching behavior is always consistent with the version of React Query the client is running.
+Query key matching is intentionally kept **server-side dumb**. The RTRQ server treats keys as opaque strings and performs exact matching only. Hierarchical/fuzzy matching (e.g., invalidating `['todos']` to match `['todos', { "userId": "123", "filter": "active" }]`) is the responsibility of the **receiving client**, which delegates directly to React Query's native `invalidateQueries` matching logic. This keeps the server free of library-specific semantics and ensures matching behavior is always consistent with the version of React Query the client is running.
 
-Application servers should therefore broadcast keys at the appropriate level of specificity. If broad invalidation is needed, the Server SDK should emit a key pattern that the client adapters are configured to handle.
+RTRQ's cross-process protocol uses **topic keys**, not raw library-owned query-key objects. A topic key is the canonical JSON serialization of a logical query-key array. The serialized JSON string is the protocol identity used for exact matching, subscriptions, and invalidation fan-out.
+
+The MVP logical query-key grammar is intentionally constrained:
+
+- The top-level value must be a JSON array.
+- Each array element must be either a string or a plain JSON object.
+- Object values may be JSON primitives only: string, number, boolean, or null.
+- Nested arrays and nested objects are not part of the MVP protocol.
+
+Object segments are treated as unordered maps for protocol purposes. Producers must sort object keys recursively before serialization so that logically equivalent keys produce the same topic key string. For example, `["todos", {"filter":"active","userId":"123"}]` and `["todos", {"userId":"123","filter":"active"}]` must serialize to the same topic key string.
+
+Broad invalidation is represented by shorter logical key prefixes. For example, invalidating `["todos"]` should trigger library-native matching on clients that hold more specific keys such as `["todos", {"userId":"123"}]`.
+
+Application servers should therefore broadcast topic keys at the appropriate level of specificity. If broad invalidation is needed, the Server SDK should emit the canonical topic key for the desired prefix.
+
+### WebSocket Subscription Semantics
+
+Client subscriptions are maintained over the existing WebSocket connection. RTRQ does not use a separate HTTP surface for browser subscription management in the MVP.
+
+Each WebSocket connection owns a server-side subscription set:
+
+- The subscription set starts empty when the connection is established.
+- Clients mutate that set by sending add and remove messages over the socket.
+- Add and remove operations may contain one topic key or many topic keys.
+- Add and remove operations are idempotent.
+- Subscription state is connection-scoped, not user-scoped.
+
+The core client owns the WebSocket transport and subscription lifecycle. The React Query adapter is responsible for deriving topic subscriptions from active query usage and replaying the current subscription set after reconnect.
+
+RTRQ does not durably store subscription state across disconnects. After reconnect, the client must rehydrate the server-side subscription set by replaying its current topics as add messages.
+
+The server acknowledges subscription mutations over the WebSocket connection. An acknowledgement confirms that the mutation was accepted and applied to the connection's subscription set. It does not guarantee future invalidation delivery.
+
+Invalidation delivery may race with subscription changes or disconnects. The MVP intentionally tolerates missed invalidations in those windows under the "degraded speed, not broken functionality" design goal. Replay of missed invalidations is out of scope for the MVP.
 
 ---
 
@@ -102,7 +135,7 @@ A framework-agnostic TypeScript library responsible for:
 
 - Managing the WebSocket connection lifecycle (connect, reconnect, backoff).
 - Authenticating at handshake time using the provided session token.
-- Maintaining the client's subscription set.
+- Maintaining the client's connection-scoped subscription set.
 - Receiving invalidation messages and dispatching them to registered handlers.
 
 ### React Query Adapter (MVP)
@@ -111,8 +144,9 @@ The React Query adapter wraps the QueryClient via a `createQueryClient()` factor
 
 The adapter does two things:
 
-- **On invalidation send:** Intercepts outbound `invalidateQueries` calls (via a proxied QueryClient or a global `MutationCache` `onSuccess` callback) and forwards them to the RTRQ Server, so that mutations by Client A are broadcast to Clients B and C.
-- **On invalidation receive:** Listens to the Core Client SDK and calls the underlying QueryClient's `invalidateQueries` when a message is received, triggering React Query's native refetch flow.
+- **On subscription maintenance:** Derives canonical topic keys from active query usage and keeps the Core Client SDK's connection-scoped subscription set in sync.
+- **On invalidation send:** Intercepts outbound `invalidateQueries` calls (via a proxied QueryClient or a global `MutationCache` `onSuccess` callback), derives the canonical topic key prefix to invalidate, and forwards it to the RTRQ Server so that mutations by Client A are broadcast to Clients B and C.
+- **On invalidation receive:** Listens to the Core Client SDK, deserializes the canonical topic key back into the constrained logical query-key shape, and calls the underlying QueryClient's `invalidateQueries` when a message is received, triggering React Query's native refetch flow.
 
 ---
 
