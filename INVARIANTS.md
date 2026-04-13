@@ -19,15 +19,15 @@ These invariants are the human-readable source material for future tests, schema
 - Broad invalidation is represented by shorter logical key prefixes and their corresponding canonical topic strings.
 - The HTTP invalidation contract must stay aligned between the FastAPI server and active server SDKs.
 - Accepted HTTP invalidation requests return `200 OK`. This confirms request acceptance only, not client delivery.
-- The WebSocket protocol is limited to the documented MVP message taxonomy unless the protocol is intentionally revised:
+- Once the WebSocket transport in `apps/server` is wired, the WebSocket protocol is limited to the documented MVP message taxonomy unless the protocol is intentionally revised:
   - client to server: `subscribe`, `unsubscribe`
   - server to client: `ready`, `subscription_ack`, `invalidation`, `error`
-- `invalidation` messages carry `topics: string[]`, not a single scalar topic.
-- `subscription_ack.topic_count` is the number of unique validated topics in the accepted request payload. It is not the number of server-side state changes.
-- Each client subscription mutation receives exactly one terminal response from the server:
+- Once that transport is wired, `invalidation` messages carry `topics: string[]`, not a single scalar topic.
+- Once that transport is wired, `subscription_ack.topic_count` is the number of unique validated topics in the accepted request payload. It is not the number of server-side state changes.
+- Once that transport is wired, each client subscription mutation receives exactly one terminal response from the server:
   - `subscription_ack` if accepted
   - `error` if invalid or rejected
-- RTRQ does not send both `subscription_ack` and `error` for the same `op_id`.
+- Once that transport is wired, RTRQ does not send both `subscription_ack` and `error` for the same `op_id`.
 
 ## Responsibility Invariants
 

@@ -1,15 +1,19 @@
-from fastapi.testclient import TestClient
+import pytest
+from httpx import ASGITransport, AsyncClient
 
 from rtrq_server.app import create_app
 
 
-def test_invalidate_accepts_topics_and_source() -> None:
-    client = TestClient(create_app())
+@pytest.mark.asyncio
+async def test_invalidate_accepts_topics_and_source() -> None:
+    app = create_app()
+    transport = ASGITransport(app=app)
 
-    response = client.post(
-        "/v1/invalidate",
-        json={"topics": ["todos", "users"], "source": "api"},
-    )
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.post(
+            "/v1/invalidate",
+            json={"topics": ["todos", "users"], "source": "api"},
+        )
 
     assert response.status_code == 200
     assert response.json() == {
@@ -18,10 +22,13 @@ def test_invalidate_accepts_topics_and_source() -> None:
     }
 
 
-def test_invalidate_defaults_source_to_none() -> None:
-    client = TestClient(create_app())
+@pytest.mark.asyncio
+async def test_invalidate_defaults_source_to_none() -> None:
+    app = create_app()
+    transport = ASGITransport(app=app)
 
-    response = client.post("/v1/invalidate", json={"topics": ["todos"]})
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.post("/v1/invalidate", json={"topics": ["todos"]})
 
     assert response.status_code == 200
     assert response.json() == {
