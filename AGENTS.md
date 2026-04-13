@@ -2,6 +2,8 @@
 
 - Product and architecture source of truth: `RTRQ.md`.
 - Workspace layout, package locations, and top-level scripts: `README.md`.
+- Invariant source of truth: `INVARIANTS.md`.
+- Validation source of truth: `VALIDATION.md`.
 - Package manifests and existing source files define the executable contract when docs and code diverge.
 - Nested `AGENTS.md` files override this file for their subtree. Today that mainly applies to `apps/server/`.
 
