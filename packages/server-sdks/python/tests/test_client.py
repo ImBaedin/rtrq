@@ -2,6 +2,7 @@ import asyncio
 import json
 
 import httpx
+from pydantic import SecretStr
 
 from rtrq_server_sdk import RTRQServerSDK, RTRQServerSDKConfig
 from rtrq_server_sdk.security import RTRQ_SHARED_SECRET_HEADER
@@ -35,7 +36,7 @@ async def _send_invalidation(
     shared_secret = "test-shared-secret"
     config = RTRQServerSDKConfig(
         base_url="http://example.test",
-        shared_secret=shared_secret,
+        shared_secret=SecretStr(shared_secret),
     )
 
     async def handler(request: httpx.Request) -> httpx.Response:

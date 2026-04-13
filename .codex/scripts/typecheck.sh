@@ -10,4 +10,9 @@ fi
 
 cd "${ROOT_DIR}"
 
+if [[ ! -x "${ROOT_DIR}/node_modules/.bin/tsc" ]]; then
+  echo "TypeScript dependencies are not installed. Run 'bun run bootstrap' first." >&2
+  exit 1
+fi
+
 bun run typecheck

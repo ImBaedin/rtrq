@@ -8,12 +8,17 @@
     "packages/clients/adapters/*"
   ],
   "scripts": {
+    "bootstrap": "./.codex/scripts/bootstrap.sh",
     "build": "bun run build:ts && bun run build:py",
     "build:ts": "bun run --filter @rtrq/client-core build && bun run --filter @rtrq/react-query build",
     "build:py": "./scripts/build-python.sh",
     "lock:py": "uv lock",
+    "lint:py": "./.codex/scripts/python-lint.sh",
     "setup:py": "./scripts/setup-python.sh",
     "typecheck": "bun run --filter @rtrq/client-core typecheck && bun run --filter @rtrq/react-query typecheck",
+    "typecheck:py": "./.codex/scripts/python-typecheck.sh",
+    "python-tests": "./.codex/scripts/python-tests.sh",
+    "validate": "./.codex/scripts/validate.sh",
     "dev:core": "bun run --filter @rtrq/client-core dev",
     "dev:react-query": "bun run --filter @rtrq/react-query dev",
     "dev:server": "./scripts/run-server-dev.sh",

@@ -26,11 +26,16 @@ This repository contains the initial monorepo skeleton for RTRQ using Bun for th
 
 ## Scripts
 
+- `bun run bootstrap` prepares a fresh worktree for active development and validation.
+- `bun run validate` runs the default aggregate validation flow for the active repository surfaces.
 - `bun install` installs the TypeScript workspace dependencies.
 - `bun run lock:py` refreshes the Python `uv.lock` file.
+- `bun run lint:py` runs Ruff for the active Python packages.
 - `bun run setup:py` syncs the Python workspace into the repo-local `.venv/` via `uv`.
 - `bun run build` builds the TypeScript packages and Python distributions.
 - `bun run typecheck` runs TypeScript typechecking for the Bun workspace packages.
+- `bun run typecheck:py` runs Python typechecking for the active Python packages via `ty`.
+- `bun run python-tests` runs Python tests for the active Python packages.
 - `bun run dev:server` boots the FastAPI app in reload mode through `uv run`.
 
 ## Notes
