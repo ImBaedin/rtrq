@@ -9,26 +9,26 @@ from rtrq_server_sdk.security import RTRQ_SHARED_SECRET_HEADER
 
 def test_invalidate_sends_expected_request() -> None:
     captured, response = asyncio.run(
-        _send_invalidation(keys=["todos", "users"], source="api"),
+        _send_invalidation(topics=["todos", "users"], source="api"),
     )
 
-    assert response.status_code == 202
+    assert response.status_code == 200
     assert captured["url"] == "http://example.test/v1/invalidate"
     assert captured["has_secret_header"] is True
     assert captured["secret_header_matches_config"] is True
-    assert captured["json"] == {"keys": ["todos", "users"], "source": "api"}
+    assert captured["json"] == {"topics": ["todos", "users"], "source": "api"}
 
 
 def test_invalidate_omits_source_when_not_provided() -> None:
-    captured, response = asyncio.run(_send_invalidation(keys=["todos"]))
+    captured, response = asyncio.run(_send_invalidation(topics=["todos"]))
 
-    assert response.status_code == 202
-    assert captured["json"] == {"keys": ["todos"]}
+    assert response.status_code == 200
+    assert captured["json"] == {"topics": ["todos"]}
 
 
 async def _send_invalidation(
     *,
-    keys: list[str],
+    topics: list[str],
     source: str | None = None,
 ) -> tuple[dict[str, object], httpx.Response]:
     captured: dict[str, object] = {}
@@ -46,14 +46,14 @@ async def _send_invalidation(
             == config.shared_secret.get_secret_value()
         )
         captured["json"] = json.loads(request.read().decode())
-        return httpx.Response(202, json={"ok": True})
+        return httpx.Response(200, json={"ok": True})
 
     transport = httpx.MockTransport(handler)
     client = httpx.AsyncClient(transport=transport, base_url="http://example.test")
     sdk = RTRQServerSDK(config, client=client)
 
     try:
-        response = await sdk.invalidate(keys, source=source)
+        response = await sdk.invalidate(topics, source=source)
     finally:
         await sdk.aclose()
 

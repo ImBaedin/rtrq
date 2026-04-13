@@ -29,11 +29,11 @@ class RTRQServerSDK:
 
     async def invalidate(
         self,
-        keys: list[str],
+        topics: list[str],
         *,
         source: str | None = None,
     ) -> httpx.Response:
-        payload: dict[str, Any] = {"keys": keys}
+        payload: dict[str, Any] = {"topics": topics}
         if source is not None:
             payload["source"] = source
 

@@ -37,4 +37,4 @@ This repository contains the initial monorepo skeleton for RTRQ using Bun for th
 
 - Redis wiring is intentionally not provisioned in this repository.
 - The code included here is scaffolding only. It defines package boundaries, public APIs, and build surfaces without implementing the full invalidation pipeline yet.
-- Python packages are managed as a `uv` workspace rooted at [pyproject.toml](/Users/baedin/Documents/projects/rtrq/pyproject.toml).
+- Python packages are managed as a `uv` workspace rooted at [pyproject.toml](./pyproject.toml).

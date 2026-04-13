@@ -71,18 +71,31 @@ Query key matching is intentionally kept **server-side dumb**. The RTRQ server t
 
 RTRQ's cross-process protocol uses **topic keys**, not raw library-owned query-key objects. A topic key is the canonical JSON serialization of a logical query-key array. The serialized JSON string is the protocol identity used for exact matching, subscriptions, and invalidation fan-out.
 
-The MVP logical query-key grammar is intentionally constrained:
+The MVP logical query-key grammar follows the JSON data model:
 
 - The top-level value must be a JSON array.
-- Each array element must be either a string or a plain JSON object.
-- Object values may be JSON primitives only: string, number, boolean, or null.
-- Nested arrays and nested objects are not part of the MVP protocol.
+- Array elements and nested values may be any valid JSON value: string, number, boolean, null, array, or plain object.
+- Object keys must be strings.
+- Arrays preserve order for protocol identity.
+- Values outside the JSON data model are not part of the MVP protocol, including `undefined`, functions, symbols, `BigInt`, class instances, and non-finite numbers.
 
-Object segments are treated as unordered maps for protocol purposes. Producers must sort object keys recursively before serialization so that logically equivalent keys produce the same topic key string. For example, `["todos", {"filter":"active","userId":"123"}]` and `["todos", {"userId":"123","filter":"active"}]` must serialize to the same topic key string.
+Object segments are treated as unordered maps for protocol purposes. Producers must sort object keys recursively before serialization so that logically equivalent values produce the same topic key string. For example, `["todos", {"filter":"active","userId":"123"}]` and `["todos", {"userId":"123","filter":"active"}]` must serialize to the same topic key string.
 
 Broad invalidation is represented by shorter logical key prefixes. For example, invalidating `["todos"]` should trigger library-native matching on clients that hold more specific keys such as `["todos", {"userId":"123"}]`.
 
 Application servers should therefore broadcast topic keys at the appropriate level of specificity. If broad invalidation is needed, the Server SDK should emit the canonical topic key for the desired prefix.
+
+If a library-owned query key cannot be represented as a canonical topic key, the adapter must fail safe by preserving local library behavior without RTRQ transport for that key. Implementations may surface a development warning, but they must not break the application's existing fetch or refetch flow.
+
+### HTTP Invalidation Semantics
+
+The HTTP invalidation endpoint acknowledges accepted invalidation requests with `200 OK`. This response confirms that RTRQ accepted the request for processing. It does not guarantee delivery to any connected client.
+
+Recommended MVP error behavior:
+
+- `401 Unauthorized` when the shared-secret credential is missing or invalid
+- `422 Unprocessable Entity` when the payload is malformed
+- `413 Payload Too Large` when an operator-defined request size limit is exceeded
 
 ### WebSocket Subscription Semantics
 
@@ -96,13 +109,92 @@ Each WebSocket connection owns a server-side subscription set:
 - Add and remove operations are idempotent.
 - Subscription state is connection-scoped, not user-scoped.
 
-The core client owns the WebSocket transport and subscription lifecycle. The React Query adapter is responsible for deriving topic subscriptions from active query usage and replaying the current subscription set after reconnect.
+The core client owns the WebSocket transport and subscription lifecycle. The React Query adapter is responsible for deriving topic subscriptions from cached query usage and replaying the current subscription set after reconnect.
 
 RTRQ does not durably store subscription state across disconnects. After reconnect, the client must rehydrate the server-side subscription set by replaying its current topics as add messages.
 
 The server acknowledges subscription mutations over the WebSocket connection. An acknowledgement confirms that the mutation was accepted and applied to the connection's subscription set. It does not guarantee future invalidation delivery.
 
 Invalidation delivery may race with subscription changes or disconnects. The MVP intentionally tolerates missed invalidations in those windows under the "degraded speed, not broken functionality" design goal. Replay of missed invalidations is out of scope for the MVP.
+
+### WebSocket Message Taxonomy (MVP)
+
+The MVP WebSocket protocol uses a small typed message set. Each message includes a `type` field. Client mutation messages are correlated with an `op_id`. Server-delivered invalidation messages are correlated with a `delivery_id`.
+
+**Client to server messages**
+
+- `subscribe`
+  - Purpose: ensure one or more topic keys are present in the connection-scoped subscription set.
+  - Fields:
+    - `type: "subscribe"`
+    - `op_id: string`
+    - `topics: string[]`
+- `unsubscribe`
+  - Purpose: ensure one or more topic keys are absent from the connection-scoped subscription set.
+  - Fields:
+    - `type: "unsubscribe"`
+    - `op_id: string`
+    - `topics: string[]`
+
+Client subscription mutations are defined as idempotent set operations:
+
+- `subscribe(topics)` means "ensure these topics are present".
+- `unsubscribe(topics)` means "ensure these topics are absent".
+- Duplicate topics in a single message are ignored.
+- Subscribing to an already-subscribed topic is a no-op.
+- Unsubscribing from a missing topic is a no-op.
+- Empty `topics` arrays are invalid.
+
+**Server to client messages**
+
+- `ready`
+  - Purpose: confirm that the connection is authenticated and ready to accept subscription mutations.
+  - Fields:
+    - `type: "ready"`
+    - `connection_id: string`
+- `subscription_ack`
+  - Purpose: confirm that a `subscribe` or `unsubscribe` operation was accepted and applied.
+  - Fields:
+    - `type: "subscription_ack"`
+    - `op_id: string`
+    - `action: "subscribe" | "unsubscribe"`
+    - `topic_count: number`
+    - `result: "applied"`
+- `invalidation`
+  - Purpose: deliver one logical invalidation event to a client.
+  - Fields:
+    - `type: "invalidation"`
+    - `delivery_id: string`
+    - `topics: string[]`
+- `error`
+  - Purpose: report a protocol or validation error.
+  - Fields:
+    - `type: "error"`
+    - `op_id?: string`
+    - `code: string`
+    - `detail: string`
+
+For `subscription_ack`, `topic_count` is the number of unique validated topics in the accepted request payload. It is not the number of server-side state changes. This keeps acknowledgement semantics stable and auditable under retries and duplicate operations.
+
+Each client mutation receives exactly one terminal server response:
+
+- `subscription_ack` if the mutation is valid and accepted
+- `error` if the mutation is invalid or rejected
+
+RTRQ does not send both for the same `op_id`.
+
+An `invalidation` message may contain one topic key or many topic keys. The server may remove duplicate topics before delivery. Topic order within a single invalidation message is not semantically meaningful.
+
+Authentication failure is not modeled as a normal typed application message in the MVP. The connection should fail the handshake or close immediately if authentication does not succeed.
+
+The MVP intentionally omits:
+
+- client acknowledgement of invalidation delivery
+- subscription replacement or full server-side subscription snapshots
+- protocol-version negotiation
+- replay or resume cursors
+- partial-success subscription responses
+- delivery guarantees beyond at-least-once invalidation signaling
 
 ---
 
@@ -112,6 +204,8 @@ Two distinct credential types are used, reflecting the different trust levels of
 
 **Client authentication (browser → WebSocket):**
 Clients present their existing session token (JWT or equivalent) at WebSocket handshake time. The RTRQ Server validates this token using the same mechanism the application uses (shared secret validation, JWKS endpoint, etc.). This is configured once at server startup. Clients that fail validation are rejected at connection time.
+
+The MVP does not provide fine-grained, server-enforced authorization for individual topic subscriptions. Any authenticated client may request topic subscriptions within the deployment's existing trust boundary. Finer-grained subscription authorization is a future enhancement.
 
 **Server authentication (app server → HTTP endpoint):**
 Application servers include a shared secret (API key) in each HTTP request to the invalidation endpoint. This key is provisioned by the operator at deploy time and is never exposed to the browser. Network isolation provides defense-in-depth — the HTTP endpoint should be unreachable from public networks regardless of credential state.
@@ -144,7 +238,7 @@ The React Query adapter wraps the QueryClient via a `createQueryClient()` factor
 
 The adapter does two things:
 
-- **On subscription maintenance:** Derives canonical topic keys from active query usage and keeps the Core Client SDK's connection-scoped subscription set in sync.
+- **On subscription maintenance:** Derives canonical topic keys from cached query usage and keeps the Core Client SDK's connection-scoped subscription set in sync.
 - **On invalidation send:** Intercepts outbound `invalidateQueries` calls (via a proxied QueryClient or a global `MutationCache` `onSuccess` callback), derives the canonical topic key prefix to invalidate, and forwards it to the RTRQ Server so that mutations by Client A are broadcast to Clients B and C.
 - **On invalidation receive:** Listens to the Core Client SDK, deserializes the canonical topic key back into the constrained logical query-key shape, and calls the underlying QueryClient's `invalidateQueries` when a message is received, triggering React Query's native refetch flow.
 
