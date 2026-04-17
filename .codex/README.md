@@ -9,6 +9,8 @@ Recommended Codex app wiring:
 - Setup script: `.codex/scripts/bootstrap.sh`
 - Action `Validate`: `.codex/scripts/validate.sh`
 - Action `Typecheck`: `.codex/scripts/typecheck.sh`
+- Action `Python lint`: `.codex/scripts/python-lint.sh`
+- Action `Python typecheck`: `.codex/scripts/python-typecheck.sh`
 - Action `Python tests`: `.codex/scripts/python-tests.sh`
 - Action `Run server`: `.codex/scripts/run-server.sh`
 - Action `Build`: `.codex/scripts/build.sh`
@@ -18,6 +20,7 @@ What these scripts guarantee:
 - Fail fast if `bun` or `uv` is missing.
 - Bootstrap both the Bun and `uv` workspaces for fresh worktrees.
 - Keep validation aligned with the repo's canonical package-manager flows.
+- Keep the aggregate validation path aligned with `VALIDATION.md`.
 
 Relevant Codex docs:
 

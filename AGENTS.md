@@ -2,6 +2,8 @@
 
 - Product and architecture source of truth: `RTRQ.md`.
 - Workspace layout, package locations, and top-level scripts: `README.md`.
+- Invariant source of truth: `INVARIANTS.md`.
+- Validation source of truth: `VALIDATION.md`.
 - Package manifests and existing source files define the executable contract when docs and code diverge.
 - Nested `AGENTS.md` files override this file for their subtree. Today that mainly applies to `apps/server/`.
 
@@ -29,6 +31,39 @@
 - TypeScript tooling is standardized on Bun. Use `bun install` and `bun run ...`.
 - Prefer `rg` for repo search.
 - Respect existing package boundaries. Prefer small, contract-driven changes over broad reshuffles.
+
+## Source Of Record Boundary
+
+- Linear is the system of record for steering truth: prioritization, ownership, sequencing, status, current execution plans, blockers, and ongoing coordination.
+- The repository is the system of record for execution truth: architecture, contracts, invariants, runbooks, validation flows, and technical decisions that agents need in order to change code correctly.
+- Never keep core technical contracts or architecture only in Linear.
+- Never keep backlog, ownership, or status tracking only in the repository.
+
+### Placement Rubric
+
+For any new artifact, answer these yes/no questions:
+
+1. Does this describe how RTRQ works, what it guarantees, or what interfaces or contracts it exposes?
+2. Would an agent be more likely to make a wrong code change if this artifact were unavailable during execution?
+3. Should this artifact be reviewed, versioned, and changed alongside code in the same PR?
+4. Is this intended to remain true across multiple tasks rather than only for the current work item?
+5. Does this define an invariant, boundary, runbook, or technical decision that future work should rely on?
+6. Is this primarily about prioritization, ownership, sequencing, status, or open coordination?
+7. Is this primarily provisional, exploratory, or tied to the current work item rather than the long-term system?
+
+Apply the rubric as follows:
+
+- If questions 1 through 5 are mostly `yes`, and questions 6 and 7 are mostly `no`, put it in the repository.
+- If questions 6 or 7 are `yes`, and questions 1 through 5 are mostly `no`, put it in Linear.
+- If both sides have strong `yes` answers, split it:
+  - Repository: durable technical truth.
+  - Linear: active plan, ownership, status, and discussion.
+- If the answer is still unclear, ask the user before writing it.
+
+### Escalation Rule
+
+- Ask the user when an artifact mixes durable technical guidance with active planning, introduces a new artifact category, records an unresolved decision that may become a technical rule, or is likely to drift if duplicated between Linear and the repository.
+- When unsure, ask a short question in this shape: `This artifact looks mixed: part durable technical truth, part active planning context. Should I split it between the repo and Linear, or keep it entirely in one place?`
 
 ## Workflow Expectations
 

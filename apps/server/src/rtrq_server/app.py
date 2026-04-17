@@ -15,6 +15,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.post(
         f"{app_settings.api_prefix}/invalidate",
         response_model=InvalidationResponse,
+        status_code=200,
     )
     async def invalidate(_: InvalidationRequest) -> InvalidationResponse:
         return InvalidationResponse()
@@ -22,13 +23,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.websocket("/ws")
     async def websocket_endpoint(websocket: WebSocket) -> None:
         await websocket.accept()
-        await websocket.send_json(
-            {
-                "type": "server_status",
-                "detail": "WebSocket skeleton is online. Auth and fan-out are pending.",
-            }
-        )
+        # Placeholder until handshake auth and typed message handling are implemented.
         await websocket.close(code=1013)
 
     return app
-

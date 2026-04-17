@@ -15,5 +15,5 @@ fi
 
 cd "${ROOT_DIR}"
 
-bun install
+bun install --frozen-lockfile
 uv sync --project "${ROOT_DIR}" --all-packages --all-groups

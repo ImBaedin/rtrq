@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 
 class Settings(BaseModel):
@@ -12,8 +12,7 @@ class Settings(BaseModel):
         default=None,
         description="Reserved for the future Redis pub/sub integration.",
     )
-    server_secret: str | None = Field(
+    server_secret: SecretStr | None = Field(
         default=None,
         description="Shared secret expected from trusted application servers.",
     )
-
