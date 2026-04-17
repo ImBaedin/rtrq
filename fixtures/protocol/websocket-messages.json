@@ -1,0 +1,112 @@
+{
+  "valid": [
+    {
+      "name": "subscribe_basic",
+      "direction": "client_to_server",
+      "message": {
+        "type": "subscribe",
+        "op_id": "op-sub-1",
+        "topics": ["[\"todos\"]"]
+      }
+    },
+    {
+      "name": "unsubscribe_multiple_topics",
+      "direction": "client_to_server",
+      "message": {
+        "type": "unsubscribe",
+        "op_id": "op-unsub-1",
+        "topics": [
+          "[\"todos\"]",
+          "[\"todos\",{\"filter\":\"active\",\"userId\":\"123\"}]"
+        ]
+      }
+    },
+    {
+      "name": "ready_basic",
+      "direction": "server_to_client",
+      "message": {
+        "type": "ready",
+        "connection_id": "conn-1"
+      }
+    },
+    {
+      "name": "subscription_ack_basic",
+      "direction": "server_to_client",
+      "message": {
+        "type": "subscription_ack",
+        "op_id": "op-sub-1",
+        "action": "subscribe",
+        "topic_count": 2,
+        "result": "applied"
+      }
+    },
+    {
+      "name": "invalidation_multiple_topics",
+      "direction": "server_to_client",
+      "message": {
+        "type": "invalidation",
+        "delivery_id": "delivery-1",
+        "topics": [
+          "[\"todos\"]",
+          "[\"todos\",{\"filter\":\"active\",\"userId\":\"123\"}]"
+        ]
+      }
+    },
+    {
+      "name": "error_with_op_id",
+      "direction": "server_to_client",
+      "message": {
+        "type": "error",
+        "op_id": "op-sub-2",
+        "code": "invalid_topics",
+        "detail": "Topics payload must be a non-empty string array."
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "subscribe_empty_topics",
+      "message": {
+        "type": "subscribe",
+        "op_id": "op-empty",
+        "topics": []
+      },
+      "reason": "Subscription mutations require a non-empty topics array."
+    },
+    {
+      "name": "invalidation_scalar_topics",
+      "message": {
+        "type": "invalidation",
+        "delivery_id": "delivery-2",
+        "topics": "[\"todos\"]"
+      },
+      "reason": "Invalidation messages must carry topics: string[]."
+    },
+    {
+      "name": "subscription_ack_missing_op_id",
+      "message": {
+        "type": "subscription_ack",
+        "action": "subscribe",
+        "topic_count": 1,
+        "result": "applied"
+      },
+      "reason": "subscription_ack requires op_id."
+    },
+    {
+      "name": "unknown_message_type",
+      "message": {
+        "type": "sync",
+        "topics": ["[\"todos\"]"]
+      },
+      "reason": "The MVP message taxonomy is closed to the documented message types."
+    },
+    {
+      "name": "error_missing_detail",
+      "message": {
+        "type": "error",
+        "code": "invalid_topics"
+      },
+      "reason": "error messages require both code and detail."
+    }
+  ]
+}

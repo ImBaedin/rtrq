@@ -1,0 +1,66 @@
+{
+  "valid": {
+    "requests": [
+      {
+        "name": "accepted_with_source",
+        "headers": {
+          "x-rtrq-secret": "example-shared-secret"
+        },
+        "body": {
+          "topics": [
+            "[\"todos\"]",
+            "[\"todos\",{\"filter\":\"active\",\"userId\":\"123\"}]"
+          ],
+          "source": "api"
+        },
+        "expectedResponse": "accepted"
+      },
+      {
+        "name": "accepted_without_source",
+        "headers": {
+          "x-rtrq-secret": "example-shared-secret"
+        },
+        "body": {
+          "topics": ["[\"todos\"]"]
+        },
+        "expectedResponse": "accepted"
+      }
+    ],
+    "responses": [
+      {
+        "name": "accepted",
+        "status": 200,
+        "body": {
+          "accepted": true,
+          "detail": "Invalidation transport is not wired yet."
+        }
+      }
+    ]
+  },
+  "invalid": {
+    "requests": [
+      {
+        "name": "topics_not_array",
+        "headers": {
+          "x-rtrq-secret": "example-shared-secret"
+        },
+        "body": {
+          "topics": "[\"todos\"]"
+        },
+        "expectedStatus": 422,
+        "reason": "The active HTTP contract requires topics to be a JSON array of strings."
+      },
+      {
+        "name": "topics_contains_non_string",
+        "headers": {
+          "x-rtrq-secret": "example-shared-secret"
+        },
+        "body": {
+          "topics": ["[\"todos\"]", 123]
+        },
+        "expectedStatus": 422,
+        "reason": "Each topic must be a string."
+      }
+    ]
+  }
+}

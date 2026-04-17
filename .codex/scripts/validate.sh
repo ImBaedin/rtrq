@@ -9,6 +9,8 @@ if ! command -v uv >/dev/null 2>&1; then
 fi
 
 "${ROOT_DIR}/.codex/scripts/typecheck.sh"
+cd "${ROOT_DIR}"
+bun run validate:protocol-fixtures:ts
 "${ROOT_DIR}/.codex/scripts/python-lint.sh"
 "${ROOT_DIR}/.codex/scripts/python-typecheck.sh"
 "${ROOT_DIR}/.codex/scripts/python-tests.sh"
