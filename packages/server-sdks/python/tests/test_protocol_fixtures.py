@@ -45,7 +45,7 @@ async def _send_topics(
     topics: list[str],
     *,
     source: str | None = None,
-    secret: str = "example-shared-secret",
+    secret: str = "example-shared-secret",  # noqa: S107
 ) -> tuple[dict[str, object], httpx.Response]:
     captured: dict[str, object] = {}
     config = RTRQServerSDKConfig(

@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 type JsonPrimitive = string | number | boolean | null;
@@ -44,7 +45,8 @@ type HttpResponseFixture = {
   body: Record<string, unknown>;
 };
 
-const fixtureDir = path.join(process.cwd(), "fixtures", "protocol");
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const fixtureDir = path.join(scriptDir, "..", "fixtures", "protocol");
 
 const topicsFixtures = readJson<{
   valid: TopicFixture[];
@@ -141,7 +143,7 @@ function canonicalizeJson(value: JsonValue): JsonValue {
 
   if (value !== null && typeof value === "object") {
     const entries = Object.entries(value).sort(([left], [right]) =>
-      left.localeCompare(right),
+      compareUnicodeCodePoints(left, right),
     );
     return Object.fromEntries(
       entries.map(([key, entryValue]) => [key, canonicalizeJson(entryValue)]),
@@ -158,6 +160,42 @@ function isValidTopicString(topic: string): boolean {
   } catch {
     return false;
   }
+}
+
+function compareUnicodeCodePoints(left: string, right: string): number {
+  const leftPoints = Array.from(left);
+  const rightPoints = Array.from(right);
+  const maxLength = Math.max(leftPoints.length, rightPoints.length);
+
+  for (let index = 0; index < maxLength; index += 1) {
+    const leftPoint = leftPoints[index];
+    const rightPoint = rightPoints[index];
+
+    if (leftPoint === undefined) {
+      return -1;
+    }
+
+    if (rightPoint === undefined) {
+      return 1;
+    }
+
+    const leftValue = leftPoint.codePointAt(0);
+    const rightValue = rightPoint.codePointAt(0);
+
+    if (leftValue === undefined || rightValue === undefined) {
+      continue;
+    }
+
+    if (leftValue < rightValue) {
+      return -1;
+    }
+
+    if (leftValue > rightValue) {
+      return 1;
+    }
+  }
+
+  return 0;
 }
 
 function isValidWebSocketMessage(message: Record<string, unknown>): boolean {

@@ -15,11 +15,57 @@ fi
 
 cd "${ROOT_DIR}"
 
-if bun --eval 'const fs = require("fs"); const pkg = JSON.parse(fs.readFileSync("package.json", "utf8")); const sections = ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"]; const bad = sections.find((section) => pkg[section]?.tsc); if (bad) { console.error("The npm package \"tsc\" shadows the real TypeScript compiler. Remove it and rely on the \"typescript\" package instead."); process.exit(1); }'; then
-  :
-else
-  exit 1
-fi
+bun --eval '
+const fs = require("fs");
+const path = require("path");
+
+const rootDir = process.cwd();
+const message = "The npm package \"tsc\" shadows the real TypeScript compiler. Remove it and rely on the \"typescript\" package instead.";
+const sections = ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"];
+
+function readPackageJson(filePath) {
+  return JSON.parse(fs.readFileSync(filePath, "utf8"));
+}
+
+function hasShadowingTsc(pkg) {
+  return sections.some((section) => pkg[section]?.tsc);
+}
+
+const rootPackagePath = path.join(rootDir, "package.json");
+const rootPackage = readPackageJson(rootPackagePath);
+const packageJsonPaths = [rootPackagePath];
+
+for (const workspaceEntry of rootPackage.workspaces ?? []) {
+  if (workspaceEntry.endsWith("/*")) {
+    const workspaceRoot = path.join(rootDir, workspaceEntry.slice(0, -2));
+
+    for (const dirent of fs.readdirSync(workspaceRoot, { withFileTypes: true })) {
+      if (!dirent.isDirectory()) {
+        continue;
+      }
+
+      const packagePath = path.join(workspaceRoot, dirent.name, "package.json");
+      if (fs.existsSync(packagePath)) {
+        packageJsonPaths.push(packagePath);
+      }
+    }
+    continue;
+  }
+
+  const packagePath = path.join(rootDir, workspaceEntry, "package.json");
+  if (fs.existsSync(packagePath)) {
+    packageJsonPaths.push(packagePath);
+  }
+}
+
+for (const packagePath of packageJsonPaths) {
+  const pkg = readPackageJson(packagePath);
+  if (hasShadowingTsc(pkg)) {
+    console.error(message);
+    process.exit(1);
+  }
+}
+'
 
 bun install --frozen-lockfile
 

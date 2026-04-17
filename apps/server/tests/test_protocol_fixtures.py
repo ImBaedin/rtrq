@@ -74,6 +74,11 @@ async def test_invalid_http_invalidation_fixtures_are_rejected() -> None:
             )
 
             assert response.status_code == example["expectedStatus"]
+            if example["expectedStatus"] == 422:
+                payload = response.json()
+                assert "detail" in payload
+                assert payload["detail"]
+                assert example["reason"]
 
 
 def _load_fixture(name: str) -> dict[str, Any]:
