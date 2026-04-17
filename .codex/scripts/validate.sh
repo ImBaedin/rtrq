@@ -8,7 +8,14 @@ if ! command -v uv >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! command -v bun >/dev/null 2>&1; then
+  echo "bun is required for repository validation." >&2
+  exit 1
+fi
+
 "${ROOT_DIR}/.codex/scripts/typecheck.sh"
+cd "${ROOT_DIR}"
+bun run validate:protocol-fixtures:ts
 "${ROOT_DIR}/.codex/scripts/python-lint.sh"
 "${ROOT_DIR}/.codex/scripts/python-typecheck.sh"
 "${ROOT_DIR}/.codex/scripts/python-tests.sh"

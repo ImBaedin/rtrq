@@ -1,16 +1,16 @@
-## Repository Contract
+## Knowledge Index
 
-- Product and architecture source of truth: `RTRQ.md`.
-- Workspace layout, package locations, and top-level scripts: `README.md`.
+- Architecture and product source of truth: `RTRQ.md`.
+- Protocol source of truth: `RTRQ.md`.
 - Invariant source of truth: `INVARIANTS.md`.
-- Validation source of truth: `VALIDATION.md`.
+- Validation and execution workflow source of truth: `VALIDATION.md`.
+- Workspace layout, package locations, and top-level scripts: `README.md`.
 - Package manifests and existing source files define the executable contract when docs and code diverge.
 - Nested `AGENTS.md` files override this file for their subtree. Today that mainly applies to `apps/server/`.
 
-## What RTRQ Is
+## Execution Notes
 
-- RTRQ is a self-hosted real-time cache invalidation layer. It accelerates invalidation for React Query-style clients; it does not replace the application's existing fetch and refetch logic.
-- The core architecture is: app server calls RTRQ over HTTP, RTRQ fans invalidations out over WebSockets, Redis is the future inter-node backbone, and client adapters trigger library-native invalidation behavior.
+- RTRQ is a self-hosted real-time cache invalidation layer that accelerates invalidation; it does not replace the application's existing fetch and refetch logic.
 - Preserve the "degraded speed, not broken functionality" design goal. New work should fail-safe when RTRQ is unavailable.
 
 ## Active Surfaces

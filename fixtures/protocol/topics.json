@@ -1,0 +1,50 @@
+{
+  "valid": [
+    {
+      "name": "simple_prefix",
+      "logicalKey": ["todos"],
+      "topic": "[\"todos\"]"
+    },
+    {
+      "name": "canonical_object_segment",
+      "logicalKey": ["todos", { "filter": "active", "userId": "123" }],
+      "topic": "[\"todos\",{\"filter\":\"active\",\"userId\":\"123\"}]"
+    },
+    {
+      "name": "nested_structures",
+      "logicalKey": [
+        "feed",
+        {
+          "filters": {
+            "archived": false,
+            "tags": ["a", "b"]
+          },
+          "page": 1
+        }
+      ],
+      "topic": "[\"feed\",{\"filters\":{\"archived\":false,\"tags\":[\"a\",\"b\"]},\"page\":1}]"
+    }
+  ],
+  "invalid": [
+    {
+      "name": "top_level_not_array",
+      "jsonText": "\"todos\"",
+      "reason": "The top-level protocol value must be a JSON array."
+    },
+    {
+      "name": "non_canonical_object_key_order",
+      "jsonText": "[\"todos\",{\"userId\":\"123\",\"filter\":\"active\"}]",
+      "reason": "Object keys must be sorted recursively for canonical topic identity."
+    },
+    {
+      "name": "invalid_json_token",
+      "jsonText": "[\"todos\", undefined]",
+      "reason": "Values outside the JSON data model are not transportable."
+    },
+    {
+      "name": "malformed_json",
+      "jsonText": "[\"todos\",]",
+      "reason": "Topic strings must be valid JSON."
+    }
+  ]
+}

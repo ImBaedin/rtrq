@@ -17,6 +17,7 @@
     "setup:py": "./scripts/setup-python.sh",
     "typecheck": "bun run --filter @rtrq/client-core typecheck && bun run --filter @rtrq/react-query typecheck",
     "typecheck:py": "./.codex/scripts/python-typecheck.sh",
+    "validate:protocol-fixtures:ts": "bun run ./scripts/validate-protocol-fixtures.ts",
     "python-tests": "./.codex/scripts/python-tests.sh",
     "validate": "./.codex/scripts/validate.sh",
     "dev:core": "bun run --filter @rtrq/client-core dev",

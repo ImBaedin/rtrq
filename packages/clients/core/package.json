@@ -22,4 +22,3 @@
     "typecheck": "tsc -p tsconfig.json"
   }
 }
-

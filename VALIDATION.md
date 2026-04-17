@@ -122,6 +122,8 @@ At minimum, protocol changes should validate:
 
 Once shared protocol fixtures exist, they should become the primary contract examples consumed by both Python and TypeScript validation.
 
+The shared protocol fixtures live in `fixtures/protocol/` and are repository-owned contract examples for active-surface validation.
+
 ## Validation Selection Rules
 
 Developers and agents should prefer the smallest relevant validation that matches the change surface:
@@ -145,7 +147,7 @@ Known near-term work includes:
 
 - making the repo-owned aggregate validation command reliably green in fresh worktrees
 - wiring Ruff and `ty` consistently across both active Python packages
-- adding shared protocol fixtures and TypeScript protocol conformance tests
+- expanding TypeScript protocol conformance tests around the shared protocol fixtures
 - adding an end-to-end invalidation proof path
 - aligning future CI to this contract once the local harness is trustworthy
 
