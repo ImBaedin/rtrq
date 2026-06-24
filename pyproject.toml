@@ -1,5 +1,0 @@
-[tool.uv.workspace]
-members = [
-  "apps/server",
-  "packages/server-sdks/python"
-]
