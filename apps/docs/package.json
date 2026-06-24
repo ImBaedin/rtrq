@@ -1,0 +1,22 @@
+{
+  "name": "@rtrq/docs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite --host 0.0.0.0",
+    "format": "prettier --write .",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@rtrq/eslint-config": "workspace:*",
+    "@rtrq/typescript-config": "workspace:*"
+  }
+}

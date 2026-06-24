@@ -1,0 +1,25 @@
+{
+  "name": "@rtrq/demo-next-react-query",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev",
+    "format": "prettier --write .",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@rtrq/adapter-react-query": "workspace:*",
+    "@rtrq/client-core": "workspace:*",
+    "@tanstack/react-query": "^5.81.2",
+    "next": "^15.3.4",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@rtrq/eslint-config": "workspace:*",
+    "@rtrq/typescript-config": "workspace:*"
+  }
+}

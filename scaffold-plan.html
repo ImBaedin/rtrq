@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RTRQ Monorepo Scaffold Plan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              display: ["ui-serif", "Georgia", "Cambria", "Times New Roman", "serif"],
+              mono: ["JetBrains Mono", "SFMono-Regular", "Menlo", "monospace"],
+              sans: ["Aptos", "ui-sans-serif", "system-ui", "sans-serif"],
+            },
+            colors: {
+              ink: "#17201b",
+              paper: "#f7f4ec",
+              line: "#d9d1bf",
+              rust: "#a64f2f",
+              moss: "#3d6b52",
+              steel: "#375a6a",
+              chalk: "#fffaf0",
+            },
+            boxShadow: {
+              rule: "0 1px 0 rgba(23,32,27,.15)",
+              panel: "0 18px 60px rgba(23,32,27,.12)",
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        background:
+          linear-gradient(rgba(23, 32, 27, 0.035) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(23, 32, 27, 0.035) 1px, transparent 1px),
+          #f7f4ec;
+        background-size: 28px 28px;
+      }
+
+      .blueprint-grid {
+        background-image:
+          linear-gradient(rgba(255, 250, 240, 0.1) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 250, 240, 0.1) 1px, transparent 1px);
+        background-size: 20px 20px;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen text-ink antialiased">
+    <header class="border-b border-line bg-paper/85 backdrop-blur">
+      <div class="mx-auto flex max-w-7xl flex-col gap-8 px-5 py-8 sm:px-8 lg:px-10">
+        <nav class="flex flex-wrap items-center justify-between gap-4 text-sm">
+          <div class="font-mono uppercase tracking-[0.18em] text-rust">RTRQ scaffold review</div>
+          <div class="flex flex-wrap gap-3 font-mono text-xs uppercase tracking-[0.12em] text-ink/70">
+            <a class="hover:text-rust" href="#deployment">Deployment</a>
+            <a class="hover:text-rust" href="#security">Security</a>
+            <a class="hover:text-rust" href="#layout">Layout</a>
+            <a class="hover:text-rust" href="#commands">Commands</a>
+            <a class="hover:text-rust" href="#readmes">READMEs</a>
+            <a class="hover:text-rust" href="#sequence">Sequence</a>
+          </div>
+        </nav>
+
+        <section class="grid gap-8 lg:grid-cols-[1.08fr_.92fr] lg:items-end">
+          <div>
+            <p class="mb-4 max-w-2xl font-mono text-xs uppercase tracking-[0.22em] text-moss">
+              Proposal only: no scaffold files yet
+            </p>
+            <h1 class="max-w-4xl font-display text-5xl leading-[0.98] text-ink sm:text-6xl lg:text-7xl">
+              A monorepo shape for cross-client invalidation infrastructure.
+            </h1>
+            <p class="mt-6 max-w-2xl text-lg leading-8 text-ink/74">
+              This page describes the scaffold I would create after approval: Turbo for task orchestration,
+              Bun for TypeScript workspaces, uv for Python packages and apps, plus room for future language
+              SDKs, demos, docs, and shared tooling.
+            </p>
+          </div>
+
+          <div class="blueprint-grid rounded-lg border border-ink bg-ink p-5 text-chalk shadow-panel">
+            <div class="mb-4 flex items-center justify-between border-b border-chalk/20 pb-3 font-mono text-xs uppercase tracking-[0.16em] text-chalk/72">
+              <span>Primary flow</span>
+              <span>REST + WebSocket</span>
+            </div>
+            <ol class="space-y-4 text-sm leading-6">
+              <li><span class="font-mono text-rust">01</span> Server SDK invalidates a serializable query key.</li>
+              <li><span class="font-mono text-rust">02</span> RTRQ FastAPI server receives the invalidation over REST.</li>
+              <li><span class="font-mono text-rust">03</span> Server finds WebSocket clients subscribed to that key.</li>
+              <li><span class="font-mono text-rust">04</span> Client adapter receives the event and re-executes the query.</li>
+              <li><span class="font-mono text-rust">05</span> Redis later coordinates subscriptions across RTRQ server instances.</li>
+            </ol>
+          </div>
+        </section>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:px-10">
+      <section class="grid gap-5 md:grid-cols-3">
+        <div class="rounded-lg border border-line bg-chalk p-5 shadow-rule">
+          <div class="font-mono text-xs uppercase tracking-[0.16em] text-rust">Runtime split</div>
+          <p class="mt-3 text-2xl font-semibold">Bun for TypeScript. uv for Python.</p>
+          <p class="mt-3 text-sm leading-6 text-ink/68">
+            Turbo runs repo-level tasks. Each ecosystem keeps its native dependency and packaging model.
+          </p>
+        </div>
+        <div class="rounded-lg border border-line bg-chalk p-5 shadow-rule">
+          <div class="font-mono text-xs uppercase tracking-[0.16em] text-moss">Scope</div>
+          <p class="mt-3 text-2xl font-semibold">Scaffold only.</p>
+          <p class="mt-3 text-sm leading-6 text-ink/68">
+            Placeholder package entry points, tests, configs, and READMEs. No real RTRQ behavior yet.
+          </p>
+        </div>
+        <div class="rounded-lg border border-line bg-chalk p-5 shadow-rule">
+          <div class="font-mono text-xs uppercase tracking-[0.16em] text-steel">Expansion</div>
+          <p class="mt-3 text-2xl font-semibold">Language families stay isolated.</p>
+          <p class="mt-3 text-sm leading-6 text-ink/68">
+            Java, Swift, C#, Go, Ruby, and other SDKs can land under predictable package directories later.
+          </p>
+        </div>
+      </section>
+
+      <section id="deployment" class="mt-14">
+        <div class="mb-5 flex flex-col gap-2 border-b border-line pb-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p class="font-mono text-xs uppercase tracking-[0.18em] text-rust">Live deployment model</p>
+            <h2 class="mt-2 font-display text-4xl">How apps and packages interact</h2>
+          </div>
+          <p class="max-w-xl text-sm leading-6 text-ink/66">
+            The repo contains SDKs and deployable apps; production traffic flows through customer apps,
+            RTRQ infrastructure, WebSocket subscribers, and Redis-backed coordination.
+          </p>
+        </div>
+
+        <div class="rounded-lg border border-ink bg-ink p-4 text-chalk shadow-panel sm:p-6">
+          <div class="grid gap-4 xl:grid-cols-[1fr_auto_1fr_auto_1fr] xl:items-stretch">
+            <div class="rounded-lg border border-chalk/20 bg-chalk/5 p-5">
+              <div class="mb-4 flex items-center justify-between border-b border-chalk/15 pb-3">
+                <h3 class="font-semibold">Customer backend</h3>
+                <span class="font-mono text-[11px] uppercase tracking-[0.14em] text-rust">Python or TS</span>
+              </div>
+              <div class="space-y-3 text-sm leading-6 text-chalk/78">
+                <p class="rounded-md border border-chalk/15 bg-ink/40 p-3">
+                  <strong class="text-chalk">App code</strong> mutates domain data in the customer's own database.
+                </p>
+                <p class="rounded-md border border-chalk/15 bg-ink/40 p-3">
+                  <strong class="text-chalk">packages/python/server-sdk</strong> or
+                  <strong class="text-chalk"> packages/typescript/server-sdk</strong> posts an invalidation key with
+                  an app ID and API key.
+                </p>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-center xl:w-20">
+              <div class="flex w-full flex-col items-center gap-2 text-center font-mono text-[11px] uppercase tracking-[0.14em] text-chalk/64 xl:w-20">
+                <span>REST</span>
+                <div class="h-px w-full bg-rust xl:h-28 xl:w-px"></div>
+                <span>invalidate</span>
+              </div>
+            </div>
+
+            <div class="rounded-lg border border-rust/70 bg-rust/10 p-5">
+              <div class="mb-4 flex items-center justify-between border-b border-chalk/15 pb-3">
+                <h3 class="font-semibold">RTRQ server tier</h3>
+                <span class="font-mono text-[11px] uppercase tracking-[0.14em] text-rust">FastAPI</span>
+              </div>
+              <div class="grid gap-3 text-sm leading-6 text-chalk/78">
+                <p class="rounded-md border border-chalk/15 bg-ink/40 p-3">
+                  <strong class="text-chalk">apps/server</strong> exposes REST invalidation and WebSocket subscription routes.
+                </p>
+                <p class="rounded-md border border-chalk/15 bg-ink/40 p-3">
+                  <strong class="text-chalk">apps/server/admin</strong> lets standalone operators create RTRQ apps,
+                  rotate API keys, and manage allowed browser origins.
+                </p>
+                <p class="rounded-md border border-chalk/15 bg-ink/40 p-3">
+                  <strong class="text-chalk">packages/python/server-core</strong> holds protocol, auth, routing,
+                  and subscription primitives.
+                </p>
+                <p class="rounded-md border border-chalk/15 bg-ink/40 p-3">
+                  Hosted RTRQ SaaS and self-hosted deployments use the same server shape.
+                </p>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-center xl:w-20">
+              <div class="flex w-full flex-col items-center gap-2 text-center font-mono text-[11px] uppercase tracking-[0.14em] text-chalk/64 xl:w-20">
+                <span>WS</span>
+                <div class="h-px w-full bg-moss xl:h-28 xl:w-px"></div>
+                <span>events</span>
+              </div>
+            </div>
+
+            <div class="rounded-lg border border-chalk/20 bg-chalk/5 p-5">
+              <div class="mb-4 flex items-center justify-between border-b border-chalk/15 pb-3">
+                <h3 class="font-semibold">Customer clients</h3>
+                <span class="font-mono text-[11px] uppercase tracking-[0.14em] text-moss">Browser apps</span>
+              </div>
+              <div class="space-y-3 text-sm leading-6 text-chalk/78">
+                <p class="rounded-md border border-chalk/15 bg-ink/40 p-3">
+                  <strong class="text-chalk">packages/typescript/client-core</strong> connects with the public app ID
+                  and configured RTRQ server URL.
+                </p>
+                <p class="rounded-md border border-chalk/15 bg-ink/40 p-3">
+                  <strong class="text-chalk">packages/typescript/adapter-react-query</strong> maps invalidation events to query refetches.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-5 grid gap-4 lg:grid-cols-[1fr_.8fr_1fr] lg:items-stretch">
+            <div class="rounded-lg border border-chalk/15 bg-chalk/5 p-5">
+              <p class="font-mono text-[11px] uppercase tracking-[0.14em] text-chalk/52">Data boundary</p>
+              <p class="mt-3 text-sm leading-6 text-chalk/76">
+                Customer records remain in customer systems. RTRQ receives keys, connection metadata,
+                and subscription state, not application payloads.
+              </p>
+            </div>
+
+            <div class="rounded-lg border border-steel/80 bg-steel/20 p-5 text-center">
+              <p class="font-mono text-[11px] uppercase tracking-[0.14em] text-chalk/58">Coordination layer</p>
+              <p class="mt-3 text-2xl font-semibold">Redis</p>
+              <p class="mt-2 text-sm leading-6 text-chalk/74">
+                Tracks subscriptions and fans invalidations across RTRQ server instances.
+              </p>
+            </div>
+
+            <div class="rounded-lg border border-chalk/15 bg-chalk/5 p-5">
+              <p class="font-mono text-[11px] uppercase tracking-[0.14em] text-chalk/52">Repo support surfaces</p>
+              <p class="mt-3 text-sm leading-6 text-chalk/76">
+                <strong class="text-chalk">apps/docs</strong> documents usage. <strong class="text-chalk">demos/*</strong>
+                exercise end-to-end integration patterns without becoming product runtime dependencies.
+              </p>
+            </div>
+          </div>
+
+          <div class="mt-5 grid gap-3 border-t border-chalk/15 pt-5 font-mono text-xs uppercase tracking-[0.13em] text-chalk/58 md:grid-cols-4">
+            <div><span class="text-rust">1.</span> mutate data</div>
+            <div><span class="text-rust">2.</span> authenticate invalidation</div>
+            <div><span class="text-moss">3.</span> check origin + match key</div>
+            <div><span class="text-moss">4.</span> refetch query</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="security" class="mt-14">
+        <div class="mb-5 flex flex-col gap-2 border-b border-line pb-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p class="font-mono text-xs uppercase tracking-[0.18em] text-rust">Security model</p>
+            <h2 class="mt-2 font-display text-4xl">App isolation and connection rules</h2>
+          </div>
+          <p class="max-w-xl text-sm leading-6 text-ink/66">
+            RTRQ should keep secrets server-side, treat browser app IDs as public identifiers, and make
+            domain allowlists a practical browser-origin control for WebSocket subscriptions.
+          </p>
+        </div>
+
+        <div class="grid gap-5 lg:grid-cols-[.9fr_1.1fr]">
+          <div class="rounded-lg border border-ink bg-ink p-5 text-chalk shadow-panel">
+            <div class="border-b border-chalk/15 pb-4">
+              <p class="font-mono text-xs uppercase tracking-[0.16em] text-rust">RTRQ app record</p>
+              <h3 class="mt-2 text-2xl font-semibold">Created from the standalone admin UI</h3>
+            </div>
+            <dl class="mt-5 grid gap-4 text-sm leading-6">
+              <div class="rounded-md border border-chalk/15 bg-chalk/5 p-4">
+                <dt class="font-mono text-[11px] uppercase tracking-[0.14em] text-chalk/52">App ID</dt>
+                <dd class="mt-2 text-chalk/78">Public, high-entropy identifier used by browser clients and backend SDKs.</dd>
+              </div>
+              <div class="rounded-md border border-chalk/15 bg-chalk/5 p-4">
+                <dt class="font-mono text-[11px] uppercase tracking-[0.14em] text-chalk/52">API key</dt>
+                <dd class="mt-2 text-chalk/78">Server-side secret used only by backend SDKs to authenticate invalidation requests.</dd>
+              </div>
+              <div class="rounded-md border border-chalk/15 bg-chalk/5 p-4">
+                <dt class="font-mono text-[11px] uppercase tracking-[0.14em] text-chalk/52">Allowed origins</dt>
+                <dd class="mt-2 text-chalk/78">Optional list of browser origins allowed to open WebSocket subscriptions for that app.</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="grid gap-5">
+            <div class="grid gap-5 md:grid-cols-2">
+              <article class="rounded-lg border border-line bg-chalk p-5">
+                <p class="font-mono text-xs uppercase tracking-[0.16em] text-rust">Backend SDK config</p>
+                <pre class="mt-4 overflow-auto rounded-md bg-ink p-4 font-mono text-sm leading-7 text-chalk"><code>{
+  serverUrl: "https://rtrq.example.com",
+  appId: "app_live_...",
+  apiKey: "rtrq_sk_..."
+}</code></pre>
+                <p class="mt-4 text-sm leading-6 text-ink/68">
+                  Required for REST invalidation. The API key never appears in frontend bundles or browser config.
+                </p>
+              </article>
+
+              <article class="rounded-lg border border-line bg-chalk p-5">
+                <p class="font-mono text-xs uppercase tracking-[0.16em] text-moss">Frontend adapter config</p>
+                <pre class="mt-4 overflow-auto rounded-md bg-ink p-4 font-mono text-sm leading-7 text-chalk"><code>{
+  serverUrl: "https://rtrq.example.com",
+  appId: "app_live_..."
+}</code></pre>
+                <p class="mt-4 text-sm leading-6 text-ink/68">
+                  Required for WebSocket subscription. Browser origin can be checked against the app allowlist.
+                </p>
+              </article>
+            </div>
+
+            <div class="grid gap-5 md:grid-cols-3">
+              <article class="rounded-lg border border-line bg-chalk p-5">
+                <h3 class="font-semibold">REST invalidation</h3>
+                <p class="mt-2 text-sm leading-6 text-ink/68">
+                  Reject requests unless the app ID exists and the API key verifies against a stored hash.
+                </p>
+              </article>
+              <article class="rounded-lg border border-line bg-chalk p-5">
+                <h3 class="font-semibold">WebSocket subscription</h3>
+                <p class="mt-2 text-sm leading-6 text-ink/68">
+                  Accept a public app ID, then enforce the app's origin allowlist when one is configured.
+                </p>
+              </article>
+              <article class="rounded-lg border border-line bg-chalk p-5">
+                <h3 class="font-semibold">Admin console</h3>
+                <p class="mt-2 text-sm leading-6 text-ink/68">
+                  Standalone servers get a local management UI for app creation, key rotation, and origin changes.
+                </p>
+              </article>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-5 grid gap-5 lg:grid-cols-3">
+          <article class="rounded-lg border border-line bg-chalk p-5">
+            <p class="font-mono text-xs uppercase tracking-[0.16em] text-rust">Origin allowlist</p>
+            <p class="mt-3 text-sm leading-6 text-ink/68">
+              Store normalized origins such as <span class="font-mono">https://app.example.com</span>, not loose
+              domain fragments. If no allowlist is set, the app can allow browser WebSocket connections from any origin.
+            </p>
+          </article>
+          <article class="rounded-lg border border-line bg-chalk p-5">
+            <p class="font-mono text-xs uppercase tracking-[0.16em] text-moss">Limits</p>
+            <p class="mt-3 text-sm leading-6 text-ink/68">
+              Origin checks reduce browser-based interception risk, but they do not replace server-side API key
+              authentication for invalidation writes.
+            </p>
+          </article>
+          <article class="rounded-lg border border-line bg-chalk p-5">
+            <p class="font-mono text-xs uppercase tracking-[0.16em] text-steel">Future hardening</p>
+            <p class="mt-3 text-sm leading-6 text-ink/68">
+              Add rate limits, audit events, key rotation, revoked-key tracking, TLS guidance, and explicit SaaS
+              tenant boundaries as implementation work begins.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section id="layout" class="mt-14">
+        <div class="mb-5 flex flex-col gap-2 border-b border-line pb-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p class="font-mono text-xs uppercase tracking-[0.18em] text-rust">Directory plan</p>
+            <h2 class="mt-2 font-display text-4xl">Repository layout</h2>
+          </div>
+          <p class="max-w-xl text-sm leading-6 text-ink/66">
+            Apps are deployable surfaces. Packages are reusable libraries. Demos prove integration paths.
+          </p>
+        </div>
+
+        <div class="grid gap-5 lg:grid-cols-[1fr_1fr]">
+          <pre class="overflow-auto rounded-lg border border-ink bg-ink p-5 font-mono text-sm leading-7 text-chalk shadow-panel"><code>rtrq/
+  apps/
+    server/
+      README.md
+      pyproject.toml
+      admin/
+      src/rtrq_server/
+      tests/
+    docs/
+      README.md
+      package.json
+      app/
+  demos/
+    next-react-query/
+      README.md
+      package.json
+    fastapi-react/
+      README.md
+      package.json
+      backend/
+      frontend/
+  packages/
+    typescript/
+      client-core/
+      adapter-react-query/
+      server-sdk/
+      shared/
+    python/
+      server-core/
+      server-sdk/
+      client-core/
+  tooling/
+    typescript-config/
+    eslint-config/
+    python/
+  package.json
+  pyproject.toml
+  turbo.json
+  bun.lock
+  uv.lock
+  README.md</code></pre>
+
+          <div class="grid gap-4">
+            <article class="rounded-lg border border-line bg-chalk p-5">
+              <h3 class="font-semibold">apps/server</h3>
+              <p class="mt-2 text-sm leading-6 text-ink/68">
+                The self-hostable RTRQ server shell: FastAPI app, WebSocket route placeholders,
+                REST invalidation route placeholders, standalone admin frontend, health checks, test harness,
+                and uv project metadata.
+              </p>
+            </article>
+            <article class="rounded-lg border border-line bg-chalk p-5">
+              <h3 class="font-semibold">apps/docs</h3>
+              <p class="mt-2 text-sm leading-6 text-ink/68">
+                Documentation site scaffold for concepts, quickstarts, SDK references, SaaS/self-hosting notes,
+                and demo walkthroughs. Built as a TypeScript app managed by Bun and Turbo.
+              </p>
+            </article>
+            <article class="rounded-lg border border-line bg-chalk p-5">
+              <h3 class="font-semibold">packages/typescript</h3>
+              <p class="mt-2 text-sm leading-6 text-ink/68">
+                Client core, React Query adapter, server SDK, and shared serialization/key utilities. These
+                packages become the first production SDK family.
+              </p>
+            </article>
+            <article class="rounded-lg border border-line bg-chalk p-5">
+              <h3 class="font-semibold">packages/python</h3>
+              <p class="mt-2 text-sm leading-6 text-ink/68">
+                FastAPI server core, Python server SDK, and a reserved Python client core package. All managed
+                through uv workspace members.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="mt-14 grid gap-5 lg:grid-cols-3">
+        <div class="rounded-lg border border-line bg-chalk p-5">
+          <p class="font-mono text-xs uppercase tracking-[0.16em] text-rust">Apps</p>
+          <ul class="mt-4 space-y-3 text-sm leading-6">
+            <li><strong>server:</strong> FastAPI RTRQ server scaffold with standalone app management UI.</li>
+            <li><strong>docs:</strong> documentation site scaffold.</li>
+          </ul>
+        </div>
+        <div class="rounded-lg border border-line bg-chalk p-5">
+          <p class="font-mono text-xs uppercase tracking-[0.16em] text-moss">Packages</p>
+          <ul class="mt-4 space-y-3 text-sm leading-6">
+            <li><strong>typescript/client-core:</strong> WebSocket and subscription primitives.</li>
+            <li><strong>typescript/adapter-react-query:</strong> TanStack Query invalidation bridge.</li>
+            <li><strong>typescript/server-sdk:</strong> Backend invalidation client for Node runtimes.</li>
+            <li><strong>python/server-core:</strong> Shared FastAPI server domain shell.</li>
+            <li><strong>python/server-sdk:</strong> Backend invalidation client for Python apps.</li>
+          </ul>
+        </div>
+        <div class="rounded-lg border border-line bg-chalk p-5">
+          <p class="font-mono text-xs uppercase tracking-[0.16em] text-steel">Demos</p>
+          <ul class="mt-4 space-y-3 text-sm leading-6">
+            <li><strong>next-react-query:</strong> TypeScript client adapter demo.</li>
+            <li><strong>fastapi-react:</strong> Python backend plus TypeScript frontend demo.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="commands" class="mt-14">
+        <div class="mb-5 border-b border-line pb-4">
+          <p class="font-mono text-xs uppercase tracking-[0.18em] text-rust">Command surface</p>
+          <h2 class="mt-2 font-display text-4xl">Commands I would wire up</h2>
+        </div>
+
+        <div class="grid gap-5 lg:grid-cols-2">
+          <div class="rounded-lg border border-line bg-chalk p-5">
+            <h3 class="font-semibold">Root scripts</h3>
+            <pre class="mt-4 overflow-auto rounded-md bg-ink p-4 font-mono text-sm leading-7 text-chalk"><code>bun install
+bun run dev
+bun run build
+bun run test
+bun run lint
+bun run format
+bun run typecheck
+uv sync --all-packages
+uv run pytest
+uv run ruff check .
+uv run ruff format .</code></pre>
+          </div>
+
+          <div class="rounded-lg border border-line bg-chalk p-5">
+            <h3 class="font-semibold">Turbo tasks</h3>
+            <pre class="mt-4 overflow-auto rounded-md bg-ink p-4 font-mono text-sm leading-7 text-chalk"><code>{
+  "tasks": {
+    "build": { "dependsOn": ["^build"] },
+    "dev": { "cache": false, "persistent": true },
+    "test": { "dependsOn": ["^build"] },
+    "lint": {},
+    "typecheck": {},
+    "format": { "cache": false }
+  }
+}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <section class="mt-14">
+        <div class="mb-5 border-b border-line pb-4">
+          <p class="font-mono text-xs uppercase tracking-[0.18em] text-rust">Config files</p>
+          <h2 class="mt-2 font-display text-4xl">Root-level scaffold</h2>
+        </div>
+
+        <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <article class="rounded-lg border border-line bg-chalk p-5">
+            <h3 class="font-semibold">package.json</h3>
+            <p class="mt-2 text-sm leading-6 text-ink/68">
+              Bun workspace definitions, shared scripts, package manager declaration, and dev dependencies for Turbo.
+            </p>
+          </article>
+          <article class="rounded-lg border border-line bg-chalk p-5">
+            <h3 class="font-semibold">pyproject.toml</h3>
+            <p class="mt-2 text-sm leading-6 text-ink/68">
+              uv workspace members, shared Python tool configuration, pytest defaults, and Ruff formatting rules.
+            </p>
+          </article>
+          <article class="rounded-lg border border-line bg-chalk p-5">
+            <h3 class="font-semibold">turbo.json</h3>
+            <p class="mt-2 text-sm leading-6 text-ink/68">
+              Build, test, lint, typecheck, format, and dev task graph for apps, packages, and demos.
+            </p>
+          </article>
+          <article class="rounded-lg border border-line bg-chalk p-5">
+            <h3 class="font-semibold">tooling/</h3>
+            <p class="mt-2 text-sm leading-6 text-ink/68">
+              Shared TypeScript, lint, and Python conventions that future packages can reuse without duplication.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section id="readmes" class="mt-14">
+        <div class="mb-5 border-b border-line pb-4">
+          <p class="font-mono text-xs uppercase tracking-[0.18em] text-rust">Documentation text</p>
+          <h2 class="mt-2 font-display text-4xl">README content I would include</h2>
+        </div>
+
+        <div class="grid gap-5 lg:grid-cols-2">
+          <article class="rounded-lg border border-line bg-chalk p-5">
+            <h3 class="font-semibold">Root README</h3>
+            <ul class="mt-4 space-y-3 text-sm leading-6 text-ink/70">
+              <li>What RTRQ is: cross-client query invalidation without handling customer data.</li>
+              <li>How invalidation moves from SDK to server to subscribed clients.</li>
+              <li>Security model: app IDs, API keys, server URLs, and optional WebSocket origin allowlists.</li>
+              <li>Monorepo map and package naming conventions.</li>
+              <li>Local setup with Bun, Turbo, uv, and Redis for future server fanout work.</li>
+              <li>Development commands, testing strategy, and contribution guidelines.</li>
+            </ul>
+          </article>
+
+          <article class="rounded-lg border border-line bg-chalk p-5">
+            <h3 class="font-semibold">Per-project READMEs</h3>
+            <ul class="mt-4 space-y-3 text-sm leading-6 text-ink/70">
+              <li>Purpose and ownership boundary.</li>
+              <li>Runtime and package manager.</li>
+              <li>Local commands for dev, build, test, lint, and typecheck where relevant.</li>
+              <li>Expected public API shape, marked as scaffold-only.</li>
+              <li>Security expectations for secrets, public app IDs, and standalone server URLs.</li>
+              <li>Future implementation notes and adjacent packages.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="mt-14">
+        <div class="mb-5 border-b border-line pb-4">
+          <p class="font-mono text-xs uppercase tracking-[0.18em] text-rust">Test posture</p>
+          <h2 class="mt-2 font-display text-4xl">Comprehensive test slots, no behavior yet</h2>
+        </div>
+
+        <div class="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+          <div class="rounded-lg border border-line bg-chalk p-5">
+            <h3 class="font-semibold">Unit tests</h3>
+            <p class="mt-2 text-sm leading-6 text-ink/68">Vitest for TypeScript packages. Pytest for Python packages.</p>
+          </div>
+          <div class="rounded-lg border border-line bg-chalk p-5">
+            <h3 class="font-semibold">Integration tests</h3>
+            <p class="mt-2 text-sm leading-6 text-ink/68">Server/client flows reserved under app and demo test directories.</p>
+          </div>
+          <div class="rounded-lg border border-line bg-chalk p-5">
+            <h3 class="font-semibold">Contract tests</h3>
+            <p class="mt-2 text-sm leading-6 text-ink/68">Shared protocol fixtures can later verify event envelopes across languages.</p>
+          </div>
+          <div class="rounded-lg border border-line bg-chalk p-5">
+            <h3 class="font-semibold">Docs checks</h3>
+            <p class="mt-2 text-sm leading-6 text-ink/68">Docs app gets build and lint hooks so examples stay reviewable.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="sequence" class="mt-14">
+        <div class="mb-5 border-b border-line pb-4">
+          <p class="font-mono text-xs uppercase tracking-[0.18em] text-rust">Execution plan after approval</p>
+          <h2 class="mt-2 font-display text-4xl">Build sequence</h2>
+        </div>
+
+        <ol class="grid gap-4 lg:grid-cols-5">
+          <li class="rounded-lg border border-line bg-chalk p-5">
+            <span class="font-mono text-xs uppercase tracking-[0.16em] text-rust">Step 1</span>
+            <p class="mt-3 font-semibold">Create root workspace files.</p>
+            <p class="mt-2 text-sm leading-6 text-ink/66">package.json, pyproject.toml, turbo.json, .gitignore, editor config.</p>
+          </li>
+          <li class="rounded-lg border border-line bg-chalk p-5">
+            <span class="font-mono text-xs uppercase tracking-[0.16em] text-rust">Step 2</span>
+            <p class="mt-3 font-semibold">Scaffold apps and demos.</p>
+            <p class="mt-2 text-sm leading-6 text-ink/66">FastAPI server, docs site, and starter demo directories.</p>
+          </li>
+          <li class="rounded-lg border border-line bg-chalk p-5">
+            <span class="font-mono text-xs uppercase tracking-[0.16em] text-rust">Step 3</span>
+            <p class="mt-3 font-semibold">Scaffold packages.</p>
+            <p class="mt-2 text-sm leading-6 text-ink/66">TypeScript and Python package shells with placeholder tests.</p>
+          </li>
+          <li class="rounded-lg border border-line bg-chalk p-5">
+            <span class="font-mono text-xs uppercase tracking-[0.16em] text-rust">Step 4</span>
+            <p class="mt-3 font-semibold">Install and lock dependencies.</p>
+            <p class="mt-2 text-sm leading-6 text-ink/66">Run Bun and uv installs to create lockfiles.</p>
+          </li>
+          <li class="rounded-lg border border-line bg-chalk p-5">
+            <span class="font-mono text-xs uppercase tracking-[0.16em] text-rust">Step 5</span>
+            <p class="mt-3 font-semibold">Verify scaffold tasks.</p>
+            <p class="mt-2 text-sm leading-6 text-ink/66">Run formatting, linting, type checks, and placeholder tests.</p>
+          </li>
+        </ol>
+      </section>
+    </main>
+
+    <footer class="mt-10 border-t border-line bg-paper/90">
+      <div class="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-8 text-sm text-ink/68 sm:px-8 lg:px-10">
+        <p class="font-mono text-xs uppercase tracking-[0.18em] text-moss">Review checkpoint</p>
+        <p>
+          After you approve or adjust this plan, I would create the actual monorepo scaffold and verify the
+          generated placeholder projects with Bun, Turbo, uv, Vitest, Pytest, Ruff, and TypeScript.
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,27 @@
+{
+  "extends": "@rtrq/typescript-config/app.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "jsx": "preserve"
+  },
+  "include": [
+    "next-env.d.ts",
+    "src",
+    "tests",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "extends": "@rtrq/typescript-config/app.json",
+  "include": ["src", "tests", "vite.config.ts"],
+  "exclude": ["dist", "node_modules"]
+}

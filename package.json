@@ -1,0 +1,38 @@
+{
+  "name": "rtrq",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.3.9",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "format": "turbo run format && uv run ruff format .",
+    "lint": "turbo run lint && uv run ruff check .",
+    "test": "turbo run test && uv run pytest",
+    "typecheck": "turbo run typecheck",
+    "check": "bun run lint && bun run typecheck && bun run test"
+  },
+  "devDependencies": {
+    "@rtrq/eslint-config": "workspace:*",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^5.0.0",
+    "eslint": "^9.29.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "prettier": "^3.5.3",
+    "turbo": "^2.5.4",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.34.1",
+    "vite": "^6.3.5",
+    "vitest": "^3.2.4"
+  },
+  "workspaces": [
+    "apps/docs",
+    "demos/next-react-query",
+    "demos/fastapi-react/frontend",
+    "packages/typescript/*",
+    "tooling/*"
+  ]
+}

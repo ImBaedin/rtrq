@@ -1,0 +1,13 @@
+[project]
+name = "rtrq-client-core"
+version = "0.0.0"
+description = "Reserved Python client core package scaffold for future RTRQ clients."
+requires-python = ">=3.12"
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rtrq_client_core"]
