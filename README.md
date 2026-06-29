@@ -89,7 +89,8 @@ Run the FastAPI server scaffold:
 uv run rtrq-server
 ```
 
-## Scaffold status
+## Implementation status
 
-This repository currently contains project boundaries, package manifests, placeholder entry points, tests, and
-documentation. It intentionally does not implement RTRQ runtime behavior yet.
+The Python server core and self-hostable FastAPI server include barebones in-memory runtime behavior for local
+testing: app API key checks, WebSocket subscriptions, prefix query-key invalidation, and REST invalidation
+requests. Other packages remain scaffolds while the protocol and adapters are built out.
