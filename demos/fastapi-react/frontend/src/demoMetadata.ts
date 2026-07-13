@@ -1,5 +1,5 @@
 export const demoMetadata = {
   name: "@rtrq/demo-fastapi-react-frontend",
-  purpose: "React frontend scaffold paired with a FastAPI backend demo.",
-  status: "scaffold"
+  purpose: "Bare-bones React Query todo UI paired with a FastAPI backend demo.",
+  status: "todo-demo",
 } as const;

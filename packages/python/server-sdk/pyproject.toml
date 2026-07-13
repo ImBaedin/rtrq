@@ -1,7 +1,7 @@
 [project]
 name = "rtrq-server-sdk"
 version = "0.0.0"
-description = "Python backend SDK scaffold for sending RTRQ invalidations."
+description = "Python backend SDK for sending RTRQ invalidations."
 requires-python = ">=3.12"
 dependencies = [
   "httpx>=0.28.1",

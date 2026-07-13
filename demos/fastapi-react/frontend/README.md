@@ -1,18 +1,31 @@
 # FastAPI React Demo Frontend
 
-Vite React frontend scaffold for the full-stack RTRQ demo.
+Vite React frontend for the full-stack RTRQ todo demo. It uses TanStack Query for reads and mutations, then
+connects the RTRQ React Query adapter so invalidations from the FastAPI backend can refetch matching clients.
 
-This frontend will eventually connect to an RTRQ server over WebSocket with a public app ID and use the React
-Query adapter to refetch invalidated queries.
+The UI is intentionally bare bones: list todos, add a todo, toggle completion, and delete a todo.
+
+## Runtime configuration
+
+| Variable               | Default                 | Purpose             |
+| ---------------------- | ----------------------- | ------------------- |
+| `VITE_API_URL`         | `http://localhost:8001` | FastAPI backend URL |
+| `VITE_RTRQ_SERVER_URL` | `http://localhost:8000` | RTRQ server URL     |
+| `VITE_RTRQ_APP_ID`     | `dev`                   | RTRQ public app id  |
 
 ## Commands
 
 ```sh
 bun run dev
 bun run build
+bun run typecheck
 bun run test
 ```
 
 ## Status
 
-Scaffold only. No live RTRQ integration is implemented yet.
+Frontend todo UI implemented. The app uses the RTRQ React Query adapter to subscribe to todo invalidations:
+
+```ts
+useRtrqReactQuery({ appId, serverUrl, queryClient, keys: [["todos"]] });
+```

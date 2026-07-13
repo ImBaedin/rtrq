@@ -1,37 +1,170 @@
 :root {
-  color: #17201b;
-  background: #f7f4ec;
-  font-family: Avenir, Montserrat, Corbel, "URW Gothic", source-sans-pro, sans-serif;
+  color: #111827;
+  background: #f9fafb;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
 }
 
 body {
   margin: 0;
 }
 
+button,
+input {
+  font: inherit;
+}
+
+button {
+  border: 1px solid #111827;
+  border-radius: 6px;
+  background: #111827;
+  color: #ffffff;
+  cursor: pointer;
+  padding: 10px 14px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+input[type="text"],
+.todo-form input:not([type]) {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  min-width: 0;
+  padding: 10px 12px;
+}
+
 .shell {
-  display: grid;
+  box-sizing: border-box;
   min-height: 100vh;
-  place-content: center;
-  padding: 48px;
+  padding: 32px 16px;
+}
+
+.panel {
+  margin: 0 auto;
+  max-width: 760px;
+}
+
+.header {
+  align-items: flex-start;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  gap: 24px;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding-bottom: 18px;
 }
 
 .eyebrow {
-  color: #375a6a;
+  color: #4b5563;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0;
+  margin: 0 0 8px;
   text-transform: uppercase;
 }
 
 h1 {
-  max-width: 760px;
-  font-family: Georgia, Cambria, "Times New Roman", serif;
-  font-size: clamp(40px, 8vw, 88px);
-  line-height: 0.98;
+  font-size: 32px;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.connection-details {
+  color: #4b5563;
+  display: grid;
+  font-size: 13px;
+  gap: 4px;
+  text-align: right;
+}
+
+.todo-form {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.todo-form label {
+  font-weight: 600;
+}
+
+.todo-form-row {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.todo-list {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.todo-item {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 12px;
+}
+
+.todo-toggle {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  min-width: 0;
+}
+
+.todo-toggle span {
+  overflow-wrap: anywhere;
+}
+
+.completed {
+  color: #6b7280;
+  text-decoration: line-through;
+}
+
+.secondary {
+  background: #ffffff;
+  color: #111827;
 }
 
 p {
-  max-width: 680px;
-  font-size: 18px;
-  line-height: 1.7;
+  margin: 0;
+}
+
+.muted {
+  color: #6b7280;
+}
+
+.error {
+  color: #b91c1c;
+  font-size: 14px;
+}
+
+@media (max-width: 640px) {
+  .header,
+  .todo-item {
+    display: grid;
+  }
+
+  .connection-details {
+    text-align: left;
+  }
+
+  .todo-form-row {
+    grid-template-columns: 1fr;
+  }
 }
